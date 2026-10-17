@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "Sora", sans-serif;
+  --font-body: "Inter", sans-serif;
+}
+
+:root {
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-surface-alt: #eef0f4;
+  --color-border: #e2e5eb;
+  --color-text: #12141a;
+  --color-text-muted: #5b606b;
+  --color-accent: #6c5ce7;
+  --color-accent-hover: #8b7cf6;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #f0563d;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0b0e14;
+  --color-surface: #141922;
+  --color-surface-alt: #1b2230;
+  --color-border: #262e3d;
+  --color-text: #eef1f6;
+  --color-text-muted: #9aa2b1;
+  --color-accent: #6c5ce7;
+  --color-accent-hover: #8b7cf6;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #f0563d;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+}
+
+/* Native <select> dropdown lists ignore parent CSS custom properties on
+   some browsers (notably Chrome/Windows) and fall back to OS defaults —
+   style them explicitly so the popup matches the current theme. */
+select,
+select option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Remove the native up/down spinner from number inputs across browsers. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ---- Landing page glow (Sign Up button + feature cards) ----------------
+   A static glow is the baseline (so it still reads fine for anyone whose
+   OS asks for reduced motion); the pulsing animation only kicks in when
+   the browser says motion is fine. Both use the app's own accent tokens,
+   not a fixed color, so this automatically matches light and dark mode. */
+.jo-glow-pill {
+  position: relative;
+  isolation: isolate;
+  box-shadow: 0 0 9px 1px color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+.jo-glow-pill::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at 82% 115%,
+    color-mix(in srgb, var(--color-accent-hover) 45%, transparent) 0%,
+    transparent 65%
+  );
+  filter: blur(6px);
+}
+
+.jo-glow-card {
+  position: relative;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent),
+    0 0 16px 0 color-mix(in srgb, var(--color-accent) 16%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .jo-glow-pill {
+    animation: jo-pill-pulse 2.8s ease-in-out infinite;
+  }
+  .jo-glow-pill::after {
+    animation: jo-pill-shimmer 2.8s ease-in-out infinite;
+  }
+  .jo-glow-card {
+    animation: jo-card-pulse 3.2s ease-in-out infinite;
+    animation-delay: var(--jo-glow-delay, 0s);
+  }
+}
+
+@keyframes jo-pill-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 14px 2px color-mix(in srgb, var(--color-accent) 38%, transparent);
+  }
+}
+
+@keyframes jo-pill-shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes jo-card-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 25%, transparent),
+      0 0 14px 0 color-mix(in srgb, var(--color-accent) 12%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent),
+      0 0 26px 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+}

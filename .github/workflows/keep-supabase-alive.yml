@@ -1,0 +1,22 @@
+name: Keep Supabase project alive
+
+# Supabase free-tier projects pause after 7 days with zero activity.
+# This pings the REST API every 3 days so the project never goes idle
+# long enough to pause. The request itself counts as activity, even
+# though RLS means it won't return any rows without a logged-in user.
+
+on:
+  schedule:
+    - cron: '0 6 */3 * *' # every 3 days at 06:00 UTC
+  workflow_dispatch: {} # lets you trigger it manually from the Actions tab to test
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST endpoint
+        run: |
+          curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/saved_jobs?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
