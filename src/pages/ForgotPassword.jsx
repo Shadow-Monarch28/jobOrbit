@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Logo from '../components/logo'
+
 
 export default function ForgotPassword() {
   const { resetPassword } = useAuth()
@@ -43,7 +45,7 @@ export default function ForgotPassword() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="w-full max-w-sm flex flex-col gap-5">
         <Link to="/" className="font-heading text-lg font-semibold text-center">
-          JobOrbit
+          <Logo />
         </Link>
 
         <form

@@ -1,3 +1,4 @@
+import Logo from '../components/logo'
 import { Link } from 'react-router-dom'
 
 const FEATURES = [
@@ -19,8 +20,8 @@ export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
       <header className="flex items-center justify-between px-4 sm:px-8 py-5 max-w-6xl mx-auto w-full">
-        <Link to="/" className="font-heading text-lg font-semibold">
-          JobOrbit
+        <Link to="/" className="flex items-center">
+          <Logo />
         </Link>
         <div className="flex items-center gap-3">
           <Link

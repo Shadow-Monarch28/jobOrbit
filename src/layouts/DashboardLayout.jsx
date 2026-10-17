@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import Logo from '../components/logo'
 
 const CAREER_LINKS = [
   { to: '/search', label: 'Discover' },
@@ -32,12 +33,12 @@ function getAvatarUrl(user) {
 
 function navLinkClass({ isActive }) {
   return `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-    isActive ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+    isActive ? '' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
   }`
 }
 
 function navLinkStyle({ isActive }) {
-  return isActive ? { backgroundColor: 'var(--color-accent)' } : {}
+  return isActive ? { color: 'var(--color-accent)' } : {}
 }
 
 function ChevronDown({ className = '' }) {
@@ -56,51 +57,75 @@ function ChevronDown({ className = '' }) {
   )
 }
 
-// Desktop-only hover dropdown ("Career", "Preparation") — CSS-driven via
-// group-hover/group-focus-within so it needs no click handlers or outside-
-// click wiring; it simply isn't rendered into the mobile drawer at all,
-// where the same links show as a flat expandable list instead.
+// Swaps the logo image based on theme. Both files are plain static assets
+// in /public, and preloaded via index.html, so this is just a src swap —
+// no fetch-on-demand flash on toggle.
+// function Logo({ className = 'h-8 w-auto' }) {
+//   const { theme } = useTheme()
+//   const src = theme === 'dark' ? '/logo-dark.png' : '/logo.png'
+//   return <img src={src} alt="JobOrbit" className={className} />
+// }
+
+// Controlled (not pure CSS-hover) so it can close itself the moment a link
+// inside is clicked — a hover-only dropdown stays visually open as long as
+// the cursor sits over the trigger, even after the click already navigated.
 function NavDropdown({ label, links, pathname }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
   const isAnyActive = links.some((l) => pathname.startsWith(l.to))
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   return (
-    <div className="relative group">
+    <div
+      className="relative"
+      ref={rootRef}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <button
         type="button"
+        onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-          isAnyActive ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+          isAnyActive ? '' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
         }`}
-        style={isAnyActive ? { backgroundColor: 'var(--color-accent)' } : {}}
+        style={isAnyActive ? { color: 'var(--color-accent)' } : {}}
       >
         {label}
-        <ChevronDown className="transition-transform group-hover:rotate-180" />
+        <ChevronDown className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      <div
-        className="absolute left-0 top-full pt-2 opacity-0 invisible translate-y-1 group-hover:opacity-100
-          group-hover:visible group-hover:translate-y-0 group-focus-within:opacity-100
-          group-focus-within:visible group-focus-within:translate-y-0 transition-all duration-150 z-40"
-      >
-        <div
-          className="min-w-[180px] rounded-xl border p-1.5 shadow-lg"
-          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-        >
-          {links.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'text-white'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-alt)]'
-                }`
-              }
-              style={({ isActive }) => (isActive ? { backgroundColor: 'var(--color-accent)' } : {})}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+      {open && (
+        <div className="absolute left-0 top-full pt-2 z-40">
+          <div
+            className="min-w-[180px] rounded-xl border p-1.5 shadow-lg"
+            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+          >
+            {links.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? ''
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-alt)]'
+                  }`
+                }
+                style={({ isActive }) => (isActive ? { color: 'var(--color-accent)' } : {})}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -211,9 +236,6 @@ function ProfileMenu({ user, onSignOut, onNavigate }) {
 export default function DashboardLayout() {
   const { user, signOut } = useAuth()
   const { pathname } = useLocation()
-  // Below md the horizontal bar collapses into a hamburger + slide-in
-  // drawer, since hover dropdowns have nowhere sensible to go on a touch
-  // screen with no hover state.
   const [navOpen, setNavOpen] = useState(false)
 
   function closeNav() {
@@ -242,10 +264,9 @@ export default function DashboardLayout() {
               </svg>
             </button>
             <Link to="/dashboard" className="mr-2 flex items-center">
-              <img src="/logo.png" alt="JobOrbit" className="h-8 w-auto" />
+              <Logo />
             </Link>
 
-            {/* Desktop nav — hidden below md, where the drawer takes over. */}
             <nav className="hidden md:flex items-center gap-1">
               <NavLink to="/dashboard" end className={navLinkClass} style={navLinkStyle}>
                 Home
@@ -268,9 +289,6 @@ export default function DashboardLayout() {
         </div>
       </header>
 
-      {/* Mobile drawer: backdrop + slide-in panel, same pattern as before,
-          now carrying the full nav (career/preparation links expanded
-          flat, plus the items that live in the desktop profile menu). */}
       {navOpen && (
         <div
           className="md:hidden fixed inset-0 z-40"
@@ -288,7 +306,7 @@ export default function DashboardLayout() {
       >
         <div className="flex items-center justify-between px-2 py-3">
           <Link to="/dashboard" onClick={closeNav} className="flex items-center">
-            <img src="/logo.png" alt="JobOrbit" className="h-8 w-auto" />
+            <Logo />
           </Link>
           <button
             onClick={closeNav}
@@ -378,9 +396,6 @@ export default function DashboardLayout() {
   )
 }
 
-// A text-label version of the theme toggle for the mobile drawer, where a
-// row with a visible label reads better in a vertical list than a bare
-// icon button does.
 function ThemeToggleButtonInline() {
   const { theme, toggleTheme } = useTheme()
   return (

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import GoogleButton from '../components/GoogleButton'
+import Logo from '../components/logo'
+
 
 export default function Signup() {
   const { signUp } = useAuth()
@@ -52,7 +54,7 @@ export default function Signup() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="w-full max-w-sm flex flex-col gap-5">
         <Link to="/" className="font-heading text-lg font-semibold text-center">
-          JobOrbit
+          <Logo />
         </Link>
 
         <form

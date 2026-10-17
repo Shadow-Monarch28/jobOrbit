@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Logo from '../components/logo'
+
 
 // Reached by following the link in the reset-password email. supabase-js
 // reads the recovery token out of the URL automatically on load and
@@ -72,7 +74,7 @@ export default function ResetPassword() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="w-full max-w-sm flex flex-col gap-5">
         <Link to="/" className="font-heading text-lg font-semibold text-center">
-          JobOrbit
+          <Logo />
         </Link>
 
         <form
