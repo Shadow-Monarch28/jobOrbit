@@ -241,8 +241,8 @@ export default function DashboardLayout() {
                 <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
               </svg>
             </button>
-            <Link to="/dashboard" className="font-heading text-lg font-semibold mr-2">
-              JobOrbit
+            <Link to="/dashboard" className="mr-2 flex items-center">
+              <img src="/logo.png" alt="JobOrbit" className="h-8 w-auto" />
             </Link>
 
             {/* Desktop nav — hidden below md, where the drawer takes over. */}
@@ -287,8 +287,8 @@ export default function DashboardLayout() {
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
       >
         <div className="flex items-center justify-between px-2 py-3">
-          <Link to="/dashboard" onClick={closeNav} className="font-heading text-lg font-semibold">
-            JobOrbit
+          <Link to="/dashboard" onClick={closeNav} className="flex items-center">
+            <img src="/logo.png" alt="JobOrbit" className="h-8 w-auto" />
           </Link>
           <button
             onClick={closeNav}
