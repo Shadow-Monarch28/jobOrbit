@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import GoogleButton from '../components/GoogleButton'
 import Logo from '../components/logo'
+import ThemeToggle from '../components/ThemeToggle'
 
 
 export default function Signup() {
@@ -62,7 +63,10 @@ export default function Signup() {
           className="p-6 rounded-xl border flex flex-col gap-4"
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
         >
-          <h1 className="font-heading text-xl font-semibold">Create account</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="font-heading text-xl font-semibold">Create account</h1>
+            <ThemeToggle />
+          </div>
 
           <input
             type="email"
