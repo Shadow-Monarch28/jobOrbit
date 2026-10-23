@@ -147,3 +147,81 @@ input[type='number'] {
       0 0 26px 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 }
+
+/* ---- Orbit backgrounds & art -------------------------------------------
+   Light, brand-coloured backgrounds that replace the flat dark page on the
+   marketing/auth/home/account screens. All colours come from the tokens
+   below so light and dark mode both work. */
+:root {
+  --jo-grad-a: #fbfbff;
+  --jo-grad-b: #eceeff;
+  --jo-ring-1: rgba(108, 92, 231, 0.14);
+  --jo-ring-2: rgba(108, 92, 231, 0.11);
+  --jo-ring-3: rgba(108, 92, 231, 0.08);
+  --jo-mist-a: #e0f2fe;
+  --jo-mist-b: #ede9fe;
+  --jo-mist-c: #fce7f3;
+}
+[data-theme='dark'] {
+  --jo-grad-a: #0e1220;
+  --jo-grad-b: #141a30;
+  --jo-ring-1: rgba(139, 124, 246, 0.26);
+  --jo-ring-2: rgba(139, 124, 246, 0.2);
+  --jo-ring-3: rgba(139, 124, 246, 0.14);
+  --jo-mist-a: #0c2538;
+  --jo-mist-b: #1d1637;
+  --jo-mist-c: #2b1330;
+}
+
+.jo-bg-rings {
+  background:
+    radial-gradient(
+      circle at var(--jo-rx, 78%) var(--jo-ry, 45%),
+      transparent 0 70px,
+      var(--jo-ring-1) 71px 72px,
+      transparent 73px 130px,
+      var(--jo-ring-2) 131px 132px,
+      transparent 133px 200px,
+      var(--jo-ring-3) 201px 202px,
+      transparent 203px 280px,
+      var(--jo-ring-3) 281px 282px,
+      transparent 283px
+    ),
+    linear-gradient(160deg, var(--jo-grad-a), var(--jo-grad-b));
+}
+
+.jo-bg-mist {
+  background: linear-gradient(135deg, var(--jo-mist-a), var(--jo-mist-b) 55%, var(--jo-mist-c));
+}
+
+.jo-split-art {
+  background: linear-gradient(135deg, #6c5ce7, #8b7cf6 45%, #38bdf8);
+}
+
+.jo-planet {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #93c5fd, #6c5ce7 60%, #4c1d95);
+  box-shadow: 0 12px 30px rgba(76, 29, 149, 0.3);
+}
+.jo-planet-ring {
+  position: absolute;
+  border: 3px solid rgba(56, 189, 248, 0.7);
+  border-radius: 50%;
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+.jo-planet-star {
+  position: absolute;
+  color: #f59e0b;
+  line-height: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .jo-planet-float {
+    animation: jo-float 6s ease-in-out infinite;
+  }
+}
+@keyframes jo-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}

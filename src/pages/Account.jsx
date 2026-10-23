@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { statusLabel, STATUS_COLOR } from '../lib/applicationStatus'
+import OrbitArt from '../components/OrbitArt'
 
 const STATUS_ORDER = ['not_applied', 'applied_pending', 'applied', 'under_review', 'shortlisted', 'not_selected']
 const MASTERY_THRESHOLD = 4
@@ -101,69 +102,101 @@ export default function Account() {
   const avatarUrl = getAvatarUrl(user)
   const initial = displayName.trim()[0]?.toUpperCase() || '?'
 
+  const memberSince = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : null
+  const provider = user?.app_metadata?.provider === 'google' ? 'Google' : 'Email & password'
+
   return (
-    <div className="p-4 sm:p-8 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
-        ) : (
-          <span
-            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold text-white shrink-0"
-            style={{ backgroundColor: 'var(--color-accent)' }}
-          >
-            {initial}
-          </span>
-        )}
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold font-heading truncate">{displayName}</h1>
-          {user?.email && <p className="text-sm text-[var(--color-text-muted)] truncate">{user.email}</p>}
-        </div>
-      </div>
-
-      <h2 className="font-heading text-lg font-semibold mt-8">Account Details</h2>
-      <p className="text-sm text-[var(--color-text-muted)] mt-1">
-        A quick summary of where you stand across JobOrbit — built from your own tracked data.
-      </p>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-        <StatTile value={mockInterviews} label="Mock interviews completed" />
-        <StatTile value={skillsBuilt} label="Skills built (4+/5)" accent="var(--color-success)" />
-        <StatTile value={totalApps} label="Applications tracked" />
-        <StatTile value={activeApplied} label="Active — awaiting update" accent="var(--color-warning)" />
-      </div>
-
-      <div className="mt-8">
-        <h2 className="font-heading text-lg font-semibold">Job Application Insights</h2>
-        {totalApps === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)] mt-2">No applications tracked yet.</p>
-        ) : (
-          <div className="flex flex-col gap-2 mt-3">
-            {STATUS_ORDER.map((status) => {
-              const count = statusCounts[status] || 0
-              if (count === 0) return null
-              return (
-                <div
-                  key={status}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2"
-                  style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[status] }} />
-                    <span className="text-sm">{statusLabel(status)}</span>
-                  </div>
-                  <span className="text-sm font-medium">{count}</span>
-                </div>
-              )
-            })}
+    <div className="jo-bg-rings min-h-full" style={{ '--jo-rx': '88%', '--jo-ry': '14%' }}>
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto">
+        <div className="relative flex items-center gap-4 pr-0 sm:pr-40">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
+          ) : (
+            <span
+              className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-semibold text-white shrink-0"
+              style={{ background: 'linear-gradient(135deg, #6c5ce7, #38bdf8)' }}
+            >
+              {initial}
+            </span>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-semibold font-heading truncate">Hi, {displayName}</h1>
+            <p className="text-sm text-[var(--color-text-muted)]">Your orbit so far</p>
           </div>
-        )}
-        <Link
-          to="/insights"
-          className="inline-flex items-center gap-1 text-sm font-medium mt-3"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          See the full breakdown in Career Insights →
-        </Link>
+          <OrbitArt size={130} float className="absolute right-0 -top-4 hidden sm:block" />
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          <StatTile value={mockInterviews} label="Mock interviews completed" />
+          <StatTile value={skillsBuilt} label="Skills built (4+/5)" accent="var(--color-success)" />
+          <StatTile value={totalApps} label="Applications tracked" />
+          <StatTile value={activeApplied} label="Active — awaiting update" accent="var(--color-warning)" />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mt-4">
+          <section
+            className="rounded-xl border p-5"
+            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+          >
+            <h2 className="font-heading text-base font-semibold">Account Details</h2>
+            <dl className="mt-3 text-sm">
+              {[
+                ['Name', displayName],
+                ['Email', user?.email || '—'],
+                ['Sign-in method', provider],
+                ...(memberSince ? [['Member since', memberSince]] : []),
+              ].map(([k, v]) => (
+                <div
+                  key={k}
+                  className="flex justify-between gap-4 py-2 border-b last:border-b-0"
+                  style={{ borderColor: 'var(--color-border)' }}
+                >
+                  <dt className="text-[var(--color-text-muted)]">{k}</dt>
+                  <dd className="font-medium truncate">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section
+            className="rounded-xl border p-5"
+            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+          >
+            <h2 className="font-heading text-base font-semibold">Job Application Insights</h2>
+            {totalApps === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)] mt-3">No applications tracked yet.</p>
+            ) : (
+              <div className="flex flex-col gap-2 mt-3">
+                {STATUS_ORDER.map((status) => {
+                  const count = statusCounts[status] || 0
+                  if (count === 0) return null
+                  return (
+                    <div
+                      key={status}
+                      className="flex items-center justify-between rounded-lg border px-3 py-2"
+                      style={{ borderColor: 'var(--color-border)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[status] }} />
+                        <span className="text-sm">{statusLabel(status)}</span>
+                      </div>
+                      <span className="text-sm font-medium">{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <Link
+              to="/insights"
+              className="inline-flex items-center gap-1 text-sm font-medium mt-4"
+              style={{ color: 'var(--color-accent)' }}
+            >
+              See the full breakdown in Career Insights →
+            </Link>
+          </section>
+        </div>
       </div>
     </div>
   )

@@ -5,6 +5,7 @@ import { computeMatchScore, SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
 import { createApplicationIfNeeded, moveToNotApplied } from '../lib/applyToJob'
 import { STATUS_OPTIONS as APPLICATION_STATUSES, STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
 import ApplicationCard from '../components/ApplicationCard'
+import OrbitArt from '../components/OrbitArt'
 
 function StatCard({ label, value, sub, onClick, active }) {
   const clickable = typeof onClick === 'function'
@@ -259,14 +260,26 @@ export default function Dashboard() {
   }
   const current = viewConfig[activeView]
 
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const meta = user?.user_metadata || {}
+  const fullName = meta.full_name || meta.name || ''
+  const firstName = fullName ? fullName.split(' ')[0] : user?.email ? user.email.split('@')[0] : ''
+
   return (
     <div className="p-4 sm:p-6 md:p-8">
-      <h1 className="font-heading text-2xl font-semibold">Dashboard</h1>
-      <p className="text-[var(--color-text-muted)] mt-2">
-        A quick look at your saved jobs, match scores, and applications.
-      </p>
+      <div className="jo-bg-mist relative overflow-hidden rounded-2xl p-6 sm:p-8">
+        <h1 className="font-heading text-2xl sm:text-3xl font-semibold">
+          {greeting}
+          {firstName ? `, ${firstName}` : ''}
+        </h1>
+        <p className="text-[var(--color-text-muted)] mt-2 max-w-md">
+          A quick look at your saved jobs, match scores, and applications.
+        </p>
+        <OrbitArt size={150} float className="absolute -right-2 top-1/2 -translate-y-1/2 hidden sm:block" />
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
         <StatCard
           label="Saved Jobs"
           value={savedJobs.length}

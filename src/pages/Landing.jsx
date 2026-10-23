@@ -1,6 +1,7 @@
 import Logo from '../components/logo'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
+import OrbitArt from '../components/OrbitArt'
 
 const FEATURES = [
   {
@@ -47,7 +48,7 @@ function ThemeToggleButton() {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div className="min-h-screen flex flex-col jo-bg-rings" style={{ '--jo-rx': '76%', '--jo-ry': '38%' }}>
       <header className="flex items-center justify-between px-4 sm:px-8 py-5 max-w-6xl mx-auto w-full">
         <Link to="/" className="flex items-center">
           <Logo />
@@ -71,31 +72,34 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center gap-8 px-4 text-center py-12">
-        <div className="flex flex-col items-center gap-5 max-w-xl">
-          <h1 className="font-heading text-4xl sm:text-5xl font-semibold leading-tight">
-            Find the roles you're actually a fit for
-          </h1>
-          <p className="text-[var(--color-text-muted)] max-w-md">
-            Upload your resume, get matched against real listings, and track every application —
-            plus AI interview prep built for the roles you've applied to.
-          </p>
-          <div className="flex gap-3">
-            <Link
-              to="/signup"
-              className="px-5 py-2.5 rounded-lg font-medium text-white"
-              style={{ backgroundColor: 'var(--color-accent)' }}
-            >
-              Get started — it's free
-            </Link>
-            <Link
-              to="/login"
-              className="px-5 py-2.5 rounded-lg font-medium border"
-              style={{ borderColor: 'var(--color-border)' }}
-            >
-              Log in
-            </Link>
+      <main className="flex-1 flex flex-col items-center justify-center gap-8 px-4 py-12">
+        <div className="w-full max-w-6xl flex items-center justify-between gap-8 px-0 sm:px-4">
+          <div className="flex flex-col items-center md:items-start gap-5 max-w-xl text-center md:text-left mx-auto md:mx-0">
+            <h1 className="font-heading text-4xl sm:text-5xl font-semibold leading-tight">
+              Find the roles you're actually a fit for
+            </h1>
+            <p className="text-[var(--color-text-muted)] max-w-md">
+              Upload your resume, get matched against real listings, and track every application —
+              plus AI interview prep built for the roles you've applied to.
+            </p>
+            <div className="flex gap-3">
+              <Link
+                to="/signup"
+                className="px-5 py-2.5 rounded-lg font-medium text-white"
+                style={{ backgroundColor: 'var(--color-accent)' }}
+              >
+                Get started — it's free
+              </Link>
+              <Link
+                to="/login"
+                className="px-5 py-2.5 rounded-lg font-medium border"
+                style={{ borderColor: 'var(--color-border)' }}
+              >
+                Log in
+              </Link>
+            </div>
           </div>
+          <OrbitArt size={300} float className="hidden md:block mr-6" />
         </div>
 
         <div className="grid sm:grid-cols-3 gap-4 max-w-4xl w-full mt-6">

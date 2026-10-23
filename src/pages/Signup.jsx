@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import GoogleButton from '../components/GoogleButton'
 import Logo from '../components/logo'
 import ThemeToggle from '../components/ThemeToggle'
+import OrbitArt from '../components/OrbitArt'
 
 
 export default function Signup() {
@@ -40,7 +41,7 @@ export default function Signup() {
 
   if (confirmSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 text-center" style={{ backgroundColor: 'var(--color-bg)' }}>
+      <div className="min-h-screen flex items-center justify-center px-4 text-center jo-bg-rings">
         <div>
           <h1 className="font-heading text-xl font-semibold mb-2">Check your email</h1>
           <p className="text-[var(--color-text-muted)]">
@@ -52,9 +53,13 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div
+      className="min-h-screen flex items-center justify-center gap-10 px-4 py-10 jo-bg-rings"
+      style={{ '--jo-rx': '28%', '--jo-ry': '50%' }}
+    >
+      <OrbitArt size={260} float className="hidden lg:block" />
       <div className="w-full max-w-sm flex flex-col gap-5">
-        <Link to="/" className="font-heading text-lg font-semibold text-center">
+        <Link to="/" className="flex justify-center">
           <Logo />
         </Link>
 
