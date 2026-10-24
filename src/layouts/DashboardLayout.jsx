@@ -37,13 +37,6 @@ function navLinkClass({ isActive }) {
   }`
 }
 
-// Drawer links: block-level so each one sits on its own full-width row.
-function drawerLinkClass({ isActive }) {
-  return `block w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-    isActive ? 'bg-[var(--color-surface-alt)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-  }`
-}
-
 function navLinkStyle({ isActive }) {
   return isActive ? { color: 'var(--color-accent)' } : {}
 }
@@ -240,18 +233,175 @@ function ProfileMenu({ user, onSignOut, onNavigate }) {
   )
 }
 
+// ---- Mobile / tablet menu -------------------------------------------------
+// Drops down from the header (full width, big touch-friendly rows with icons,
+// expandable groups) instead of sliding in from the side. The theme toggle is
+// not repeated here: it already lives in the header.
+const ICON_PROPS = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
+const MENU_ICONS = {
+  home: <svg {...ICON_PROPS}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h5v-6h4v6h5V10" /></svg>,
+  career: <svg {...ICON_PROPS}><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" /></svg>,
+  prep: <svg {...ICON_PROPS}><path d="M2 9l10-5 10 5-10 5-10-5z" /><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5" /></svg>,
+  insights: <svg {...ICON_PROPS}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>,
+  how: <svg {...ICON_PROPS}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01" /></svg>,
+  logout: <svg {...ICON_PROPS}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>,
+}
+
+function menuRowClass(isActive) {
+  return `flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-medium transition-colors ${
+    isActive ? 'bg-[var(--color-surface-alt)]' : 'text-[var(--color-text)] hover:bg-[var(--color-surface-alt)]'
+  }`
+}
+
+function MenuGroup({ label, icon, links, open, onToggle, pathname, onClose }) {
+  const active = links.some((l) => pathname.startsWith(l.to))
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className={`${menuRowClass(false)} justify-between`}
+        style={active ? { color: 'var(--color-accent)' } : undefined}
+      >
+        <span className="flex items-center gap-3">
+          {icon}
+          {label}
+        </span>
+        <ChevronDown className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="ml-6 pl-4 border-l flex flex-col gap-0.5 my-1" style={{ borderColor: 'var(--color-border)' }}>
+          {links.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={onClose}
+              className={({ isActive }) => `${menuRowClass(isActive)} !py-2.5 !text-[15px]`}
+              style={({ isActive }) => (isActive ? { color: 'var(--color-accent)' } : {})}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MobileMenu({ user, pathname, onClose, onSignOut }) {
+  const displayName = getDisplayName(user)
+  const avatarUrl = getAvatarUrl(user)
+  const initial = displayName.trim()[0]?.toUpperCase() || '?'
+  const [openGroup, setOpenGroup] = useState(() =>
+    CAREER_LINKS.some((l) => pathname.startsWith(l.to))
+      ? 'career'
+      : PREPARATION_LINKS.some((l) => pathname.startsWith(l.to))
+        ? 'prep'
+        : null,
+  )
+
+  const rowStyle = ({ isActive }) => (isActive ? { color: 'var(--color-accent)' } : {})
+
+  return (
+    <nav
+      id="mobile-menu"
+      aria-label="Main menu"
+      className="lg:hidden absolute left-0 right-0 top-full border-b shadow-xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto overscroll-contain px-3 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+    >
+      <NavLink to="/dashboard" end onClick={onClose} className={({ isActive }) => menuRowClass(isActive)} style={rowStyle}>
+        {MENU_ICONS.home}
+        Home
+      </NavLink>
+      <MenuGroup
+        label="Career"
+        icon={MENU_ICONS.career}
+        links={CAREER_LINKS}
+        open={openGroup === 'career'}
+        onToggle={() => setOpenGroup(openGroup === 'career' ? null : 'career')}
+        pathname={pathname}
+        onClose={onClose}
+      />
+      <MenuGroup
+        label="Preparation"
+        icon={MENU_ICONS.prep}
+        links={PREPARATION_LINKS}
+        open={openGroup === 'prep'}
+        onToggle={() => setOpenGroup(openGroup === 'prep' ? null : 'prep')}
+        pathname={pathname}
+        onClose={onClose}
+      />
+      <NavLink to="/insights" onClick={onClose} className={({ isActive }) => menuRowClass(isActive)} style={rowStyle}>
+        {MENU_ICONS.insights}
+        Career Insights
+      </NavLink>
+      <NavLink to="/how-it-works" onClick={onClose} className={({ isActive }) => menuRowClass(isActive)} style={rowStyle}>
+        {MENU_ICONS.how}
+        How it Works
+      </NavLink>
+
+      <div className="mt-2 pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex items-center gap-3 px-3 py-2">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+          ) : (
+            <span
+              className="w-10 h-10 rounded-full flex items-center justify-center text-base font-semibold text-white shrink-0"
+              style={{ backgroundColor: 'var(--color-accent)' }}
+            >
+              {initial}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{displayName}</p>
+            {user?.email && <p className="text-sm text-[var(--color-text-muted)] truncate">{user.email}</p>}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className={`${menuRowClass(false)} mt-1`}
+          style={{ color: 'var(--color-danger)' }}
+        >
+          {MENU_ICONS.logout}
+          Sign out
+        </button>
+      </div>
+    </nav>
+  )
+}
+
 export default function DashboardLayout() {
   const { user, signOut } = useAuth()
   const { pathname } = useLocation()
-  const [navOpen, setNavOpen] = useState(false)
+  // The menu counts as open only on the page it was opened from, so any
+  // navigation (a tap, the back button) closes it without an effect.
+  const [menuPath, setMenuPath] = useState(null)
+  const navOpen = menuPath === pathname
+  const setNavOpen = (v) => setMenuPath(v ? pathname : null)
 
   function closeNav() {
     setNavOpen(false)
   }
 
-  const displayName = getDisplayName(user)
-  const avatarUrl = getAvatarUrl(user)
-  const initial = displayName.trim()[0]?.toUpperCase() || '?'
+  // Close on Escape and when the screen grows to desktop.
+  useEffect(() => {
+    if (!navOpen) return undefined
+    function onKey(e) {
+      if (e.key === 'Escape') setMenuPath(null)
+    }
+    const mq = window.matchMedia('(min-width: 1024px)')
+    function onMq(e) {
+      if (e.matches) setMenuPath(null)
+    }
+    window.addEventListener('keydown', onKey)
+    mq.addEventListener('change', onMq)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      mq.removeEventListener('change', onMq)
+    }
+  }, [navOpen])
 
   return (
     <div className="relative isolate min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -261,16 +411,7 @@ export default function DashboardLayout() {
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
       >
         <div className="h-14 px-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setNavOpen(true)}
-              aria-label="Open menu"
-              className="lg:hidden p-2 -ml-2 text-[var(--color-text)]"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            </button>
+          <div className="flex items-center gap-1 min-w-0">
             <Link to="/dashboard" className="mr-2 flex items-center">
               <Logo />
             </Link>
@@ -293,122 +434,42 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-2">
             <ThemeToggleButton />
             <ProfileMenu user={user} onSignOut={signOut} />
+            <button
+              type="button"
+              onClick={() => setNavOpen(!navOpen)}
+              aria-label={navOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={navOpen}
+              aria-controls="mobile-menu"
+              className="lg:hidden p-2 -mr-2 text-[var(--color-text)]"
+            >
+              {navOpen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
+
+        {navOpen && <MobileMenu user={user} pathname={pathname} onClose={closeNav} onSignOut={signOut} />}
       </header>
 
       {navOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          aria-hidden="true"
+          className="lg:hidden fixed inset-0 top-14 z-20"
+          style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
           onClick={closeNav}
         />
       )}
-
-      <aside
-        className={`lg:hidden w-72 max-w-[85vw] shrink-0 border-r p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-col gap-1 overflow-y-auto overscroll-contain
-          fixed top-0 left-0 h-dvh z-50
-          transition-transform duration-200 ease-in-out
-          ${navOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-      >
-        <div className="flex items-center justify-between px-2 py-3">
-          <Link to="/dashboard" onClick={closeNav} className="flex items-center">
-            <Logo />
-          </Link>
-          <button
-            onClick={closeNav}
-            aria-label="Close menu"
-            className="p-1 -mr-1 text-[var(--color-text-muted)]"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 px-2 py-2 mt-1">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-          ) : (
-            <span
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0"
-              style={{ backgroundColor: 'var(--color-accent)' }}
-            >
-              {initial}
-            </span>
-          )}
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{displayName}</p>
-            {user?.email && <p className="text-xs text-[var(--color-text-muted)] truncate">{user.email}</p>}
-          </div>
-        </div>
-
-        <NavLink to="/dashboard" end onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
-          Home
-        </NavLink>
-
-        <div className="mt-2">
-          <div className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-[var(--color-text-muted)]">
-            CAREER
-          </div>
-          {CAREER_LINKS.map((item) => (
-            <NavLink key={item.to} to={item.to} onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-
-        <div className="mt-2">
-          <div className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-[var(--color-text-muted)]">
-            PREPARATION
-          </div>
-          {PREPARATION_LINKS.map((item) => (
-            <NavLink key={item.to} to={item.to} onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-
-        <div className="mt-2">
-          <div className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-[var(--color-text-muted)]">
-            MORE
-          </div>
-          <NavLink to="/insights" onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
-            Career Insights
-          </NavLink>
-          <NavLink to="/how-it-works" onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
-            How it Works
-          </NavLink>
-        </div>
-
-        <div className="mt-auto flex flex-col gap-2 pt-4">
-          <ThemeToggleButtonInline />
-          <button
-            onClick={signOut}
-            className="text-sm text-left px-3 py-2 rounded-lg font-medium"
-            style={{ color: 'var(--color-danger)' }}
-          >
-            Sign out
-          </button>
-        </div>
-      </aside>
 
       <main className="flex-1 min-w-0">
         <Outlet />
       </main>
     </div>
-  )
-}
-
-function ThemeToggleButtonInline() {
-  const { theme, toggleTheme } = useTheme()
-  return (
-    <button
-      onClick={toggleTheme}
-      className="text-sm text-left px-3 py-2 rounded-lg font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-    >
-      {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-    </button>
   )
 }
