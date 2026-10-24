@@ -75,6 +75,7 @@ export default function Landing() {
       <main className="flex-1 flex flex-col items-center justify-center gap-8 px-4 py-12">
         <div className="w-full max-w-6xl flex items-center justify-between gap-8 px-0 sm:px-4">
           <div className="flex flex-col items-center md:items-start gap-5 max-w-xl text-center md:text-left mx-auto md:mx-0">
+            <OrbitArt size={150} variant="violet" float className="md:hidden -mb-2" />
             <h1 className="font-heading text-4xl sm:text-5xl font-semibold leading-tight">
               Find the roles you're actually a fit for
             </h1>

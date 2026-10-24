@@ -37,6 +37,13 @@ function navLinkClass({ isActive }) {
   }`
 }
 
+// Drawer links: block-level so each one sits on its own full-width row.
+function drawerLinkClass({ isActive }) {
+  return `block w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+    isActive ? 'bg-[var(--color-surface-alt)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+  }`
+}
+
 function navLinkStyle({ isActive }) {
   return isActive ? { color: 'var(--color-accent)' } : {}
 }
@@ -78,8 +85,8 @@ function NavDropdown({ label, links, pathname }) {
     function handleClickOutside(e) {
       if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('pointerdown', handleClickOutside)
+    return () => document.removeEventListener('pointerdown', handleClickOutside)
   }, [])
 
   return (
@@ -169,8 +176,8 @@ function ProfileMenu({ user, onSignOut, onNavigate }) {
     function handleClickOutside(e) {
       if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('pointerdown', handleClickOutside)
+    return () => document.removeEventListener('pointerdown', handleClickOutside)
   }, [])
 
   return (
@@ -258,7 +265,7 @@ export default function DashboardLayout() {
             <button
               onClick={() => setNavOpen(true)}
               aria-label="Open menu"
-              className="md:hidden p-2 -ml-2 text-[var(--color-text)]"
+              className="lg:hidden p-2 -ml-2 text-[var(--color-text)]"
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
@@ -268,7 +275,7 @@ export default function DashboardLayout() {
               <Logo />
             </Link>
 
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-1">
               <NavLink to="/dashboard" end className={navLinkClass} style={navLinkStyle}>
                 Home
               </NavLink>
@@ -292,15 +299,15 @@ export default function DashboardLayout() {
 
       {navOpen && (
         <div
-          className="md:hidden fixed inset-0 z-40"
+          className="lg:hidden fixed inset-0 z-40"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
           onClick={closeNav}
         />
       )}
 
       <aside
-        className={`md:hidden w-72 shrink-0 border-r p-4 flex flex-col gap-1 overflow-y-auto
-          fixed top-0 left-0 h-screen z-50
+        className={`lg:hidden w-72 max-w-[85vw] shrink-0 border-r p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-col gap-1 overflow-y-auto overscroll-contain
+          fixed top-0 left-0 h-dvh z-50
           transition-transform duration-200 ease-in-out
           ${navOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
@@ -337,7 +344,7 @@ export default function DashboardLayout() {
           </div>
         </div>
 
-        <NavLink to="/dashboard" end onClick={closeNav} className={navLinkClass} style={navLinkStyle}>
+        <NavLink to="/dashboard" end onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
           Home
         </NavLink>
 
@@ -346,7 +353,7 @@ export default function DashboardLayout() {
             CAREER
           </div>
           {CAREER_LINKS.map((item) => (
-            <NavLink key={item.to} to={item.to} onClick={closeNav} className={navLinkClass} style={navLinkStyle}>
+            <NavLink key={item.to} to={item.to} onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
               {item.label}
             </NavLink>
           ))}
@@ -357,7 +364,7 @@ export default function DashboardLayout() {
             PREPARATION
           </div>
           {PREPARATION_LINKS.map((item) => (
-            <NavLink key={item.to} to={item.to} onClick={closeNav} className={navLinkClass} style={navLinkStyle}>
+            <NavLink key={item.to} to={item.to} onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
               {item.label}
             </NavLink>
           ))}
@@ -367,14 +374,11 @@ export default function DashboardLayout() {
           <div className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-[var(--color-text-muted)]">
             MORE
           </div>
-          <NavLink to="/insights" onClick={closeNav} className={navLinkClass} style={navLinkStyle}>
+          <NavLink to="/insights" onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
             Career Insights
           </NavLink>
-          <NavLink to="/how-it-works" onClick={closeNav} className={navLinkClass} style={navLinkStyle}>
+          <NavLink to="/how-it-works" onClick={closeNav} className={drawerLinkClass} style={navLinkStyle}>
             How it Works
-          </NavLink>
-          <NavLink to="/account" onClick={closeNav} className={navLinkClass} style={navLinkStyle}>
-            Account Details
           </NavLink>
         </div>
 

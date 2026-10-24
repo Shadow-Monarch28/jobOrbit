@@ -40,6 +40,7 @@ export default function Login() {
         style={{ background: 'linear-gradient(160deg, var(--jo-grad-a), var(--jo-grad-b))' }}
       >
       <div className="w-full max-w-sm flex flex-col gap-5">
+        <OrbitArt size={96} variant="ocean" float className="md:hidden self-center -mb-3" />
         <Link to="/" className="flex justify-center">
           <Logo />
         </Link>

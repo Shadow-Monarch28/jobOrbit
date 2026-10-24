@@ -155,6 +155,8 @@ input[type='number'] {
    tokens below, so light and dark mode both work. Animation only runs when
    the OS has not asked for reduced motion; otherwise the same scene is static. */
 :root {
+  /* scale of the orbit rings: full size on desktop, smaller on tablets and phones */
+  --jo-u: 1px;
   --jo-grad-a: #fbfbff;
   --jo-grad-b: #eceeff;
   --jo-ring-1: rgba(108, 92, 231, 0.22);
@@ -183,6 +185,13 @@ input[type='number'] {
   --jo-mist-c: #2b1330;
 }
 
+@media (max-width: 1023px) {
+  :root { --jo-u: 0.78px; }
+}
+@media (max-width: 639px) {
+  :root { --jo-u: 0.52px; }
+}
+
 /* Page background: soft colour blobs that slowly drift, plus two orbit rings
    (each carrying a small satellite) centred on --jo-rx / --jo-ry. */
 .jo-bg-rings {
@@ -192,11 +201,11 @@ input[type='number'] {
   background:
     radial-gradient(
       circle at var(--jo-rx, 78%) var(--jo-ry, 45%),
-      transparent 0 200px,
-      var(--jo-ring-2) 201px 202px,
-      transparent 203px 260px,
-      var(--jo-ring-3) 261px 262px,
-      transparent 263px
+      transparent 0 calc(200 * var(--jo-u)),
+      var(--jo-ring-2) calc(200 * var(--jo-u)) calc(200 * var(--jo-u) + 1px),
+      transparent calc(200 * var(--jo-u) + 1px) calc(260 * var(--jo-u)),
+      var(--jo-ring-3) calc(260 * var(--jo-u)) calc(260 * var(--jo-u) + 1px),
+      transparent calc(260 * var(--jo-u) + 1px)
     ),
     radial-gradient(45% 55% at 20% 85%, var(--jo-blob-b), transparent 70%),
     radial-gradient(45% 55% at 85% 15%, var(--jo-blob-a), transparent 70%),
@@ -213,21 +222,21 @@ input[type='number'] {
   border-radius: 50%;
   pointer-events: none;
 }
-/* outer ring, radius 320px */
+/* outer ring, radius 320 units (1 unit = --jo-u, so it shrinks on phones) */
 .jo-bg-rings::before {
-  width: 640px;
-  height: 640px;
-  left: calc(var(--jo-rx, 78%) - 320px);
-  top: calc(var(--jo-ry, 45%) - 320px);
+  width: calc(640 * var(--jo-u));
+  height: calc(640 * var(--jo-u));
+  left: calc(var(--jo-rx, 78%) - 320 * var(--jo-u));
+  top: calc(var(--jo-ry, 45%) - 320 * var(--jo-u));
   border: 1px solid var(--jo-ring-3);
   background: radial-gradient(circle at 50% 0, var(--jo-dot) 0 3px, transparent 4px);
 }
-/* inner ring (radius 130px) */
+/* inner ring (radius 130 units) */
 .jo-bg-rings::after {
-  width: 260px;
-  height: 260px;
-  left: calc(var(--jo-rx, 78%) - 130px);
-  top: calc(var(--jo-ry, 45%) - 130px);
+  width: calc(260 * var(--jo-u));
+  height: calc(260 * var(--jo-u));
+  left: calc(var(--jo-rx, 78%) - 130 * var(--jo-u));
+  top: calc(var(--jo-ry, 45%) - 130 * var(--jo-u));
   border: 1px solid var(--jo-ring-1);
   background: radial-gradient(circle at 50% 100%, var(--jo-dot) 0 4px, transparent 5px);
 }
@@ -246,10 +255,10 @@ input[type='number'] {
 .jo-split-art::before {
   content: '';
   position: absolute;
-  width: 520px;
-  height: 520px;
-  right: -180px;
-  bottom: -200px;
+  width: calc(520 * var(--jo-u));
+  height: calc(520 * var(--jo-u));
+  right: calc(-180 * var(--jo-u));
+  bottom: calc(-200 * var(--jo-u));
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.28);
   background: radial-gradient(circle at 50% 0, rgba(255, 255, 255, 0.9) 0 4px, transparent 5px);

@@ -269,13 +269,16 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-6 md:p-8">
       <div className="jo-bg-mist relative overflow-hidden rounded-2xl p-6 sm:p-8">
-        <h1 className="font-heading text-2xl sm:text-3xl font-semibold">
-          {greeting}
-          {firstName ? `, ${firstName}` : ''}
-        </h1>
-        <p className="text-[var(--color-text-muted)] mt-2 max-w-md">
-          A quick look at your saved jobs, match scores, and applications.
-        </p>
+        <div className="pr-16 sm:pr-0">
+          <h1 className="font-heading text-2xl sm:text-3xl font-semibold">
+            {greeting}
+            {firstName ? `, ${firstName}` : ''}
+          </h1>
+          <p className="text-[var(--color-text-muted)] mt-2 max-w-md">
+            A quick look at your saved jobs, match scores, and applications.
+          </p>
+        </div>
+        <OrbitArt size={84} variant="rose" float className="absolute -right-3 top-3 sm:hidden" />
         <OrbitArt size={150} variant="rose" float className="absolute -right-2 top-1/2 -translate-y-1/2 hidden sm:block" />
       </div>
 
