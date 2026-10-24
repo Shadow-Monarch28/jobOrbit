@@ -59,6 +59,7 @@ export default function Signup() {
     >
       <OrbitArt size={260} variant="sunset" float className="hidden lg:block" />
       <div className="w-full max-w-sm flex flex-col gap-5">
+        <OrbitArt size={96} variant="sunset" float className="lg:hidden self-center -mb-3" />
         <Link to="/" className="flex justify-center">
           <Logo />
         </Link>
