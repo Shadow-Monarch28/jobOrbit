@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -31,8 +31,139 @@ function StatTile({ value, label, accent }) {
   )
 }
 
+function EditProfileModal({ user, isGoogle, onClose }) {
+  const { updateProfile } = useAuth()
+  const [name, setName] = useState(getDisplayName(user))
+  const [email, setEmail] = useState(user?.email || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const nameRef = useRef(null)
+
+  useEffect(() => {
+    nameRef.current?.focus()
+    function onKey(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setError('')
+    const cleanName = name.trim()
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanName) return setError('Please enter your name.')
+    if (cleanName.length > 60) return setError('Name must be 60 characters or fewer.')
+    const emailChanged = !isGoogle && cleanEmail !== (user?.email || '').toLowerCase()
+    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return setError('Please enter a valid email address.')
+    }
+    setSaving(true)
+    const { error: err } = await updateProfile({ name: cleanName, email: emailChanged ? cleanEmail : null })
+    setSaving(false)
+    if (err) return setError(err.message || 'Could not save your changes.')
+    if (emailChanged) {
+      setNotice(`We sent a confirmation link to ${cleanEmail}. Your email changes after you confirm it.`)
+    } else {
+      onClose()
+    }
+  }
+
+  const inputClass = 'px-3 py-2 rounded-lg border bg-transparent w-full'
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-profile-title"
+        onSubmit={handleSave}
+        className="w-full max-w-sm rounded-xl border p-6 flex flex-col gap-4"
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+      >
+        <h2 id="edit-profile-title" className="font-heading text-lg font-semibold">
+          Edit account details
+        </h2>
+
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="text-[var(--color-text-muted)]">Name</span>
+          <input
+            ref={nameRef}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={60}
+            className={inputClass}
+            style={{ borderColor: 'var(--color-border)' }}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="text-[var(--color-text-muted)]">Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isGoogle}
+            className={`${inputClass} disabled:opacity-60`}
+            style={{ borderColor: 'var(--color-border)' }}
+          />
+          {isGoogle ? (
+            <span className="text-xs text-[var(--color-text-muted)]">
+              Your email comes from your Google account, so it can't be changed here.
+            </span>
+          ) : (
+            <span className="text-xs text-[var(--color-text-muted)]">
+              Changing it sends a confirmation link to the new address.
+            </span>
+          )}
+        </label>
+
+        {error && (
+          <p role="alert" className="text-sm" style={{ color: 'var(--color-danger)' }}>
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p role="status" className="text-sm" style={{ color: 'var(--color-success)' }}>
+            {notice}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border text-sm font-medium"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            {notice ? 'Close' : 'Cancel'}
+          </button>
+          {!notice && (
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60"
+              style={{ backgroundColor: 'var(--color-accent)' }}
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function Account() {
   const { user } = useAuth()
+  const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [mockInterviews, setMockInterviews] = useState(0)
   const [skillsBuilt, setSkillsBuilt] = useState(0)
@@ -108,9 +239,9 @@ export default function Account() {
   const provider = user?.app_metadata?.provider === 'google' ? 'Google' : 'Email & password'
 
   return (
-    <div className="jo-bg-rings min-h-full" style={{ '--jo-rx': '88%', '--jo-ry': '14%' }}>
+    <div className="min-h-full">
       <div className="p-4 sm:p-8 max-w-4xl mx-auto">
-        <div className="relative flex items-center gap-4 pr-0 sm:pr-40">
+        <div className="relative flex items-center gap-4 pr-0 sm:pr-40 sm:min-h-[100px]">
           {avatarUrl ? (
             <img src={avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
           ) : (
@@ -125,7 +256,7 @@ export default function Account() {
             <h1 className="text-2xl sm:text-3xl font-semibold font-heading truncate">Hi, {displayName}</h1>
             <p className="text-sm text-[var(--color-text-muted)]">Your orbit so far</p>
           </div>
-          <OrbitArt size={130} float className="absolute right-0 -top-4 hidden sm:block" />
+          <OrbitArt size={116} variant="emerald" float className="absolute right-0 -top-3 hidden sm:block" />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
@@ -140,7 +271,22 @@ export default function Account() {
             className="rounded-xl border p-5"
             style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
           >
-            <h2 className="font-heading text-base font-semibold">Account Details</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-heading text-base font-semibold">Account Details</h2>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                aria-label="Edit account details"
+                title="Edit name and email"
+                className="w-8 h-8 rounded-lg border flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
+                style={{ borderColor: 'var(--color-border)' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" />
+                  <path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z" />
+                </svg>
+              </button>
+            </div>
             <dl className="mt-3 text-sm">
               {[
                 ['Name', displayName],
@@ -198,6 +344,7 @@ export default function Account() {
           </section>
         </div>
       </div>
+      {editing && <EditProfileModal user={user} isGoogle={provider === 'Google'} onClose={() => setEditing(false)} />}
     </div>
   )
 }

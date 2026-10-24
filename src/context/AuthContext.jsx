@@ -51,6 +51,20 @@ export function AuthProvider({ children }) {
     // i.e. called from the /reset-password page after following the email
     // link, or from a signed-in settings page.
     updatePassword: (newPassword) => supabase.auth.updateUser({ password: newPassword }),
+    // Updates the display name and/or email. The auth listener above ignores
+    // updates for the same user id, so the new user object is pushed into
+    // state here — that is what refreshes the name everywhere (header, Account).
+    // A changed email stays pending until the person confirms it from the
+    // link Supabase sends to the new address.
+    updateProfile: async ({ name, email }) => {
+      const attrs = { data: { full_name: name } }
+      if (email) attrs.email = email
+      const res = await supabase.auth.updateUser(attrs)
+      if (!res.error && res.data?.user) {
+        setSession((prev) => (prev ? { ...prev, user: res.data.user } : prev))
+      }
+      return res
+    },
     // Redirect-based Google sign-in. Works, but the browser is sent away to
     // Supabase's own domain to do the Google exchange, so Google's consent
     // screen shows "continue to <project-ref>.supabase.co" instead of your

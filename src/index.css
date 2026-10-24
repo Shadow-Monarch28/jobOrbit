@@ -256,23 +256,107 @@ input[type='number'] {
   pointer-events: none;
 }
 
+/* ---- Planets ------------------------------------------------------------
+   Each variant has its own colour AND surface pattern (bands, craters,
+   continents, swirls), so no two pages show the same planet. The shading
+   overlay (inset shadows) is shared. */
 .jo-planet {
   position: absolute;
   border-radius: 9999px;
-  background: radial-gradient(circle at 30% 30%, #93c5fd, #6c5ce7 60%, #4c1d95);
-  box-shadow: 0 12px 30px rgba(76, 29, 149, 0.3);
+  overflow: hidden;
+  box-shadow:
+    inset -14px -16px 30px rgba(0, 0, 20, 0.35),
+    inset 10px 10px 24px rgba(255, 255, 255, 0.22),
+    0 12px 30px var(--jo-planet-glow, rgba(76, 29, 149, 0.3));
 }
+/* violet: smooth glossy sphere (landing) */
+.jo-planet-violet {
+  --jo-planet-glow: rgba(76, 29, 149, 0.32);
+  background: radial-gradient(circle at 30% 30%, #93c5fd, #6c5ce7 60%, #4c1d95);
+}
+/* ocean: teal water with white cloud swirls (login) */
+.jo-planet-ocean {
+  --jo-planet-glow: rgba(8, 145, 178, 0.35);
+  background:
+    radial-gradient(ellipse 38% 12% at 62% 30%, rgba(255, 255, 255, 0.55), transparent 70%),
+    radial-gradient(ellipse 45% 10% at 38% 58%, rgba(255, 255, 255, 0.42), transparent 70%),
+    radial-gradient(ellipse 30% 9% at 66% 78%, rgba(255, 255, 255, 0.4), transparent 70%),
+    radial-gradient(circle at 30% 30%, #a5f3fc, #0891b2 55%, #164e63);
+}
+/* sunset: banded gas giant (signup) */
+.jo-planet-sunset {
+  --jo-planet-glow: rgba(234, 88, 12, 0.35);
+  background:
+    repeating-linear-gradient(
+      172deg,
+      rgba(255, 255, 255, 0.0) 0 9%,
+      rgba(255, 237, 213, 0.38) 9% 14%,
+      rgba(124, 45, 18, 0.22) 14% 20%
+    ),
+    radial-gradient(circle at 30% 30%, #fde68a, #fb923c 50%, #be185d);
+}
+/* rose: cratered moon-like world (home hero) */
+.jo-planet-rose {
+  --jo-planet-glow: rgba(190, 24, 93, 0.3);
+  background:
+    radial-gradient(circle at 28% 62%, rgba(131, 24, 67, 0.45) 0 9%, transparent 10%),
+    radial-gradient(circle at 66% 26%, rgba(131, 24, 67, 0.4) 0 12%, transparent 13%),
+    radial-gradient(circle at 74% 70%, rgba(131, 24, 67, 0.38) 0 7%, transparent 8%),
+    radial-gradient(circle at 46% 40%, rgba(131, 24, 67, 0.3) 0 5%, transparent 6%),
+    radial-gradient(circle at 30% 30%, #fbcfe8, #ec4899 55%, #831843);
+}
+/* emerald: continents on a green world (account) */
+.jo-planet-emerald {
+  --jo-planet-glow: rgba(5, 150, 105, 0.35);
+  background:
+    radial-gradient(ellipse 34% 22% at 34% 36%, rgba(190, 242, 100, 0.65), transparent 72%),
+    radial-gradient(ellipse 26% 30% at 68% 62%, rgba(190, 242, 100, 0.55), transparent 72%),
+    radial-gradient(ellipse 18% 12% at 62% 24%, rgba(190, 242, 100, 0.5), transparent 72%),
+    radial-gradient(circle at 30% 30%, #6ee7b7, #059669 55%, #064e3b);
+}
+/* amber: golden world with a dark storm spot (spare) */
+.jo-planet-amber {
+  --jo-planet-glow: rgba(217, 119, 6, 0.35);
+  background:
+    radial-gradient(ellipse 22% 14% at 60% 62%, rgba(120, 53, 15, 0.55), transparent 75%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0) 0 12%, rgba(254, 243, 199, 0.35) 12% 18%),
+    radial-gradient(circle at 30% 30%, #fef08a, #f59e0b 55%, #78350f);
+}
+
 .jo-planet-ring {
   position: absolute;
-  border: 3px solid rgba(56, 189, 248, 0.7);
+  border: 3px solid var(--jo-ring-color, rgba(56, 189, 248, 0.7));
   border-radius: 50%;
-  transform: rotate(-18deg);
+  transform: rotate(var(--jo-tilt-a, -18deg));
   pointer-events: none;
 }
 .jo-planet-star {
   position: absolute;
-  color: #f59e0b;
+  color: var(--jo-star-color, #f59e0b);
   line-height: 1;
+}
+/* a small moon that circles the planet */
+.jo-moon-orbit {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.jo-moon {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 30% 30%, #ffffff, var(--jo-moon-color, #cbd5e1) 70%);
+  box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Fixed full-viewport page background for every signed-in screen: always
+   covers the whole window, however short or long the page is. */
+.jo-bg-rings.jo-fixed-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -303,6 +387,9 @@ input[type='number'] {
   .jo-planet-ring {
     animation: jo-tilt 26s ease-in-out infinite;
   }
+  .jo-moon-orbit {
+    animation: jo-spin 60s linear infinite;
+  }
   .jo-planet-star {
     animation: jo-twinkle 8s ease-in-out infinite;
   }
@@ -326,8 +413,8 @@ input[type='number'] {
   75%      { transform: translate(-6px, -8px); }
 }
 @keyframes jo-tilt {
-  0%, 100% { transform: rotate(-18deg); }
-  50%      { transform: rotate(-10deg); }
+  0%, 100% { transform: rotate(var(--jo-tilt-a, -18deg)); }
+  50%      { transform: rotate(var(--jo-tilt-b, -10deg)); }
 }
 @keyframes jo-twinkle {
   0%, 100% { opacity: 1; transform: scale(1); }

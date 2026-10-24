@@ -276,7 +276,7 @@ export default function Dashboard() {
         <p className="text-[var(--color-text-muted)] mt-2 max-w-md">
           A quick look at your saved jobs, match scores, and applications.
         </p>
-        <OrbitArt size={150} float className="absolute -right-2 top-1/2 -translate-y-1/2 hidden sm:block" />
+        <OrbitArt size={150} variant="rose" float className="absolute -right-2 top-1/2 -translate-y-1/2 hidden sm:block" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-5">

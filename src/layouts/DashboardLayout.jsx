@@ -247,7 +247,8 @@ export default function DashboardLayout() {
   const initial = displayName.trim()[0]?.toUpperCase() || '?'
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div className="relative isolate min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+      <div aria-hidden="true" className="jo-bg-rings jo-fixed-bg" style={{ '--jo-rx': '84%', '--jo-ry': '22%' }} />
       <header
         className="sticky top-0 z-30 border-b"
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}

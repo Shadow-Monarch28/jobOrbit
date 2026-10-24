@@ -99,7 +99,7 @@ export default function Landing() {
               </Link>
             </div>
           </div>
-          <OrbitArt size={300} float className="hidden md:block mr-6" />
+          <OrbitArt size={300} variant="violet" float className="hidden md:block mr-6" />
         </div>
 
         <div className="grid sm:grid-cols-3 gap-4 max-w-4xl w-full mt-6">

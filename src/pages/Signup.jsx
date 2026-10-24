@@ -57,7 +57,7 @@ export default function Signup() {
       className="min-h-screen flex items-center justify-center gap-10 px-4 py-10 jo-bg-rings"
       style={{ '--jo-rx': '28%', '--jo-ry': '50%' }}
     >
-      <OrbitArt size={260} float className="hidden lg:block" />
+      <OrbitArt size={260} variant="sunset" float className="hidden lg:block" />
       <div className="w-full max-w-sm flex flex-col gap-5">
         <Link to="/" className="flex justify-center">
           <Logo />

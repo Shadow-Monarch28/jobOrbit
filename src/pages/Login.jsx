@@ -30,7 +30,7 @@ export default function Login() {
   return (
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="jo-split-art hidden md:flex flex-col justify-center gap-4 p-12 text-white relative overflow-hidden">
-        <OrbitArt size={220} float className="mb-2" />
+        <OrbitArt size={220} variant="ocean" float className="mb-2" />
         <h2 className="font-heading text-4xl font-semibold leading-tight">Welcome back</h2>
         <p className="text-white/85 max-w-sm">Pick up where you left off: your matches, applications and interview prep are waiting.</p>
       </div>
