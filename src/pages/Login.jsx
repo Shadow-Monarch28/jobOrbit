@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import GoogleButton from '../components/GoogleButton'
 import Logo from '../components/logo'
 import ThemeToggle from '../components/ThemeToggle'
+import OrbitArt from '../components/OrbitArt'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -27,7 +28,17 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div className="min-h-screen grid md:grid-cols-2">
+      <div className="jo-split-art hidden md:flex flex-col justify-center gap-4 p-12 text-white relative overflow-hidden">
+        <OrbitArt size={220} float className="mb-2" />
+        <h2 className="font-heading text-4xl font-semibold leading-tight">Welcome back</h2>
+        <p className="text-white/85 max-w-sm">Pick up where you left off: your matches, applications and interview prep are waiting.</p>
+      </div>
+
+      <div
+        className="flex items-center justify-center px-4 py-10"
+        style={{ background: 'linear-gradient(160deg, var(--jo-grad-a), var(--jo-grad-b))' }}
+      >
       <div className="w-full max-w-sm flex flex-col gap-5">
         <Link to="/" className="flex justify-center">
           <Logo />
@@ -94,6 +105,7 @@ export default function Login() {
             No account? <Link to="/signup" className="underline">Sign up</Link>
           </p>
         </form>
+      </div>
       </div>
     </div>
   )

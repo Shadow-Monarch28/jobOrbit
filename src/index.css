@@ -147,3 +147,189 @@ input[type='number'] {
       0 0 26px 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 }
+
+/* ---- Orbit backgrounds & art -------------------------------------------
+   Light, brand-coloured backgrounds with slow, continuous motion. Nothing
+   here is a short burst: every loop runs for 18s to 140s and repeats forever,
+   so the page feels alive without drawing the eye. All colours come from the
+   tokens below, so light and dark mode both work. Animation only runs when
+   the OS has not asked for reduced motion; otherwise the same scene is static. */
+:root {
+  --jo-grad-a: #fbfbff;
+  --jo-grad-b: #eceeff;
+  --jo-ring-1: rgba(108, 92, 231, 0.22);
+  --jo-ring-2: rgba(108, 92, 231, 0.16);
+  --jo-ring-3: rgba(108, 92, 231, 0.11);
+  --jo-dot: #6c5ce7;
+  --jo-blob-a: rgba(167, 139, 250, 0.38);
+  --jo-blob-b: rgba(56, 189, 248, 0.30);
+  --jo-blob-c: rgba(244, 114, 182, 0.22);
+  --jo-mist-a: #e0f2fe;
+  --jo-mist-b: #ede9fe;
+  --jo-mist-c: #fce7f3;
+}
+[data-theme='dark'] {
+  --jo-grad-a: #0e1220;
+  --jo-grad-b: #141a30;
+  --jo-ring-1: rgba(139, 124, 246, 0.34);
+  --jo-ring-2: rgba(139, 124, 246, 0.26);
+  --jo-ring-3: rgba(139, 124, 246, 0.18);
+  --jo-dot: #a99bff;
+  --jo-blob-a: rgba(99, 70, 220, 0.36);
+  --jo-blob-b: rgba(14, 116, 144, 0.34);
+  --jo-blob-c: rgba(157, 23, 77, 0.24);
+  --jo-mist-a: #0c2538;
+  --jo-mist-b: #1d1637;
+  --jo-mist-c: #2b1330;
+}
+
+/* Page background: soft colour blobs that slowly drift, plus two orbit rings
+   (each carrying a small satellite) centred on --jo-rx / --jo-ry. */
+.jo-bg-rings {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at var(--jo-rx, 78%) var(--jo-ry, 45%),
+      transparent 0 200px,
+      var(--jo-ring-2) 201px 202px,
+      transparent 203px 260px,
+      var(--jo-ring-3) 261px 262px,
+      transparent 263px
+    ),
+    radial-gradient(45% 55% at 20% 85%, var(--jo-blob-b), transparent 70%),
+    radial-gradient(45% 55% at 85% 15%, var(--jo-blob-a), transparent 70%),
+    radial-gradient(40% 45% at 55% 110%, var(--jo-blob-c), transparent 70%),
+    linear-gradient(160deg, var(--jo-grad-a), var(--jo-grad-b));
+  background-size: 100% 100%, 140% 140%, 140% 140%, 140% 140%, 100% 100%;
+  background-position: 0 0, 0% 100%, 100% 0%, 50% 100%, 0 0;
+}
+.jo-bg-rings::before,
+.jo-bg-rings::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+}
+/* outer ring, radius 320px */
+.jo-bg-rings::before {
+  width: 640px;
+  height: 640px;
+  left: calc(var(--jo-rx, 78%) - 320px);
+  top: calc(var(--jo-ry, 45%) - 320px);
+  border: 1px solid var(--jo-ring-3);
+  background: radial-gradient(circle at 50% 0, var(--jo-dot) 0 3px, transparent 4px);
+}
+/* inner ring (radius 130px) */
+.jo-bg-rings::after {
+  width: 260px;
+  height: 260px;
+  left: calc(var(--jo-rx, 78%) - 130px);
+  top: calc(var(--jo-ry, 45%) - 130px);
+  border: 1px solid var(--jo-ring-1);
+  background: radial-gradient(circle at 50% 100%, var(--jo-dot) 0 4px, transparent 5px);
+}
+
+.jo-bg-mist {
+  background: linear-gradient(120deg, var(--jo-mist-a), var(--jo-mist-b) 50%, var(--jo-mist-c), var(--jo-mist-a));
+  background-size: 300% 300%;
+}
+
+.jo-split-art {
+  position: relative;
+  background: linear-gradient(120deg, #6c5ce7, #8b7cf6 35%, #38bdf8 65%, #6c5ce7);
+  background-size: 300% 300%;
+}
+/* a big translucent orbit ring behind the planet on the login panel */
+.jo-split-art::before {
+  content: '';
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  right: -180px;
+  bottom: -200px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: radial-gradient(circle at 50% 0, rgba(255, 255, 255, 0.9) 0 4px, transparent 5px);
+  pointer-events: none;
+}
+
+.jo-planet {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #93c5fd, #6c5ce7 60%, #4c1d95);
+  box-shadow: 0 12px 30px rgba(76, 29, 149, 0.3);
+}
+.jo-planet-ring {
+  position: absolute;
+  border: 3px solid rgba(56, 189, 248, 0.7);
+  border-radius: 50%;
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+.jo-planet-star {
+  position: absolute;
+  color: #f59e0b;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* colour blobs drift back and forth, one full cycle every 48s */
+  .jo-bg-rings {
+    animation: jo-drift 48s ease-in-out infinite alternate;
+  }
+  /* satellites circle their rings: 140s and 75s per lap, opposite directions */
+  .jo-bg-rings::before {
+    animation: jo-spin 140s linear infinite reverse;
+  }
+  .jo-bg-rings::after {
+    animation: jo-spin 75s linear infinite;
+  }
+  .jo-bg-mist {
+    animation: jo-shift 40s ease-in-out infinite;
+  }
+  .jo-split-art {
+    animation: jo-shift 32s ease-in-out infinite;
+  }
+  .jo-split-art::before {
+    animation: jo-spin 110s linear infinite;
+  }
+  /* planet bobs gently (18s cycle), its ring slowly tilts, the star twinkles */
+  .jo-planet-float {
+    animation: jo-float 18s ease-in-out infinite;
+  }
+  .jo-planet-ring {
+    animation: jo-tilt 26s ease-in-out infinite;
+  }
+  .jo-planet-star {
+    animation: jo-twinkle 8s ease-in-out infinite;
+  }
+}
+
+@keyframes jo-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes jo-drift {
+  0%   { background-position: 0 0, 0% 100%, 100% 0%, 50% 100%, 0 0; }
+  100% { background-position: 0 0, 60% 40%, 40% 70%, 20% 60%, 0 0; }
+}
+@keyframes jo-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes jo-float {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(6px, -10px); }
+  50%      { transform: translate(0, -16px); }
+  75%      { transform: translate(-6px, -8px); }
+}
+@keyframes jo-tilt {
+  0%, 100% { transform: rotate(-18deg); }
+  50%      { transform: rotate(-10deg); }
+}
+@keyframes jo-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.8); }
+}
