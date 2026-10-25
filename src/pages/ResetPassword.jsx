@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/logo'
 
@@ -9,8 +9,7 @@ import Logo from '../components/logo'
 // establishes a session for it — that's what AuthContext's `user` reflects
 // here. No token handling needed in this component itself.
 export default function ResetPassword() {
-  const { user, loading: authLoading, updatePassword } = useAuth()
-  const navigate = useNavigate()
+  const { user, loading: authLoading, updatePassword, signOut } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
@@ -32,7 +31,46 @@ export default function ResetPassword() {
       return
     }
     setDone(true)
-    setTimeout(() => navigate('/dashboard'), 1500)
+  }
+
+  // After a successful reset: end the temporary recovery session, then reload
+  // onto the login page so the person signs in fresh with the new password.
+  async function goToLogin() {
+    try {
+      await signOut()
+    } catch {
+      // the redirect below still happens
+    }
+    window.location.assign('/login')
+  }
+
+  useEffect(() => {
+    if (!done) return undefined
+    const t = setTimeout(goToLogin, 8000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done])
+
+  if (done) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 text-center" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="max-w-sm flex flex-col items-center gap-3">
+          <span className="text-4xl" aria-hidden="true">🚀</span>
+          <h1 className="font-heading text-2xl font-semibold">Password reset. Orbit locked in.</h1>
+          <p className="text-[var(--color-text-muted)]">
+            Your new password is ready to roll. You can close this tab and head back to the login page —
+            or we'll take you there in a few seconds.
+          </p>
+          <button
+            onClick={goToLogin}
+            className="mt-2 px-5 py-2.5 rounded-lg font-medium text-white"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+          >
+            Take me to login
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (authLoading) {
@@ -54,17 +92,6 @@ export default function ResetPassword() {
           <Link to="/forgot-password" className="inline-block mt-4 text-sm underline" style={{ color: 'var(--color-accent)' }}>
             Request a new link
           </Link>
-        </div>
-      </div>
-    )
-  }
-
-  if (done) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 text-center" style={{ backgroundColor: 'var(--color-bg)' }}>
-        <div>
-          <h1 className="font-heading text-xl font-semibold mb-2">Password updated</h1>
-          <p className="text-[var(--color-text-muted)]">Taking you to your dashboard...</p>
         </div>
       </div>
     )

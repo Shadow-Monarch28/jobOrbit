@@ -1,4 +1,5 @@
 import { STATUS_OPTIONS, STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
+import { SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
 
 // Shared by Dashboard's Applications view and the Tracker page, so both
 // always show the same card and status options.
@@ -20,6 +21,20 @@ export default function ApplicationCard({ application, onStatusChange, updating 
           >
             {statusLabel(application.status)}
           </span>
+          {typeof application.match_score === 'number' && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full shrink-0 font-medium"
+              style={{
+                backgroundColor:
+                  'color-mix(in srgb, ' +
+                  (application.match_score >= SHORTLIST_THRESHOLD ? 'var(--color-success)' : 'var(--color-warning)') +
+                  ' 18%, transparent)',
+                color: application.match_score >= SHORTLIST_THRESHOLD ? 'var(--color-success)' : 'var(--color-warning)',
+              }}
+            >
+              {application.match_score >= SHORTLIST_THRESHOLD ? 'Strong Match' : 'Match'} · {application.match_score}%
+            </span>
+          )}
         </div>
         <p className="text-xs text-[var(--color-text-muted)] truncate">
           {job.company} · {job.location}

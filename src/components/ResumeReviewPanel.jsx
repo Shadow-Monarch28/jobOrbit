@@ -26,19 +26,23 @@ export default function ResumeReviewPanel({ applicationId, resumes }) {
 
   return (
     <div>
-      <h3 className="font-heading text-lg font-semibold">Resume Review</h3>
+      <h3 className="font-heading text-lg font-semibold">Your Resume. Their Expectations. One Clear Picture.</h3>
       <p className="text-sm text-[var(--color-text-muted)] mt-1">
-        See which resume you used for this application and how it compares to the job description.
+        See how your resume stacks up against the job description and discover how well your experience
+        aligns with the role.
       </p>
 
       {!result && (resumes || []).length === 0 && (
-        <p className="text-sm mt-4">
-          Upload your resume in{' '}
-          <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
-            Account Details
-          </Link>{' '}
-          to get a review for this application.
-        </p>
+        <div className="mt-4">
+          <p className="font-medium">No resume on file yet.</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
+            Upload your resume in{' '}
+            <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
+              Account Details
+            </Link>{' '}
+            to unlock your personalized review and discover your fit for this role.
+          </p>
+        </div>
       )}
 
       {!result && (resumes || []).length > 0 && (

@@ -17,7 +17,19 @@ export async function createApplicationIfNeeded({ userId, job, matchScore }) {
       match_score: matchScore ?? null,
     })
     .select()
-  if (error && error.code !== '23505') {
+  if (error && error.code === '23505') {
+    // Already tracked. If it was parked as "Not Applied", applying now revives it.
+    const { data: revived } = await supabase
+      .from('applications')
+      .update({ status: 'applied_pending', updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('job_source', job.source)
+      .eq('job_source_id', job.sourceId)
+      .eq('status', 'not_applied')
+      .select()
+    return { error: null, data: revived?.[0] ?? null }
+  }
+  if (error) {
     console.error('Failed to create application:', error.message)
     return { error, data: null }
   }

@@ -411,7 +411,6 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
             <div className="max-w-[90%]">
               <ErrorNotice
                 message={error}
-                userMessage="Unable to process your response."
                 onRetry={pendingAnswer ? handleRetry : undefined}
                 retryDisabled={loading}
               />

@@ -130,10 +130,12 @@ export default function InterviewLab() {
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold font-heading">Interview Lab</h1>
+      <p className="font-heading text-lg font-medium mt-1">Less Panic. More “I've Got This.”</p>
       <p className="text-[var(--color-text-muted)] mt-1">
-        Orbit Mentor — your job-specific interview & career preparation partner.
+        Practice for the real thing with Orbit Mentor — your personal sidekick for interviews and career prep.
       </p>
-      <p className="text-sm text-[var(--color-text-muted)] mt-4">Choose an application to prepare for.</p>
+      <p className="font-medium mt-5">Your next big interview starts here.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-0.5">Pick an application to begin.</p>
 
       {applications.length === 0 && (
         <p className="text-sm text-[var(--color-text-muted)] mt-6">

@@ -59,6 +59,38 @@ function jsonResponse(body, status = 200) {
   })
 }
 
+// Groq refills its token allowance continuously (per minute). Every response
+// says how many tokens are left and when the allowance refills, so before a
+// big call we quietly wait for the refill instead of running into a 429. This
+// is what keeps the end of an interview (the two heaviest calls back to back)
+// from failing. Best effort: it is per function instance.
+const rateState = { remaining: Infinity, resetAt: 0 }
+
+function parseDurationMs(v) {
+  if (!v) return 0
+  let ms = 0
+  const m = /(?:(\d+(?:\.\d+)?)m(?!s))?(?:(\d+(?:\.\d+)?)s)?(?:(\d+(?:\.\d+)?)ms)?/.exec(v)
+  if (m) ms = (parseFloat(m[1] || 0) * 60 + parseFloat(m[2] || 0)) * 1000 + parseFloat(m[3] || 0)
+  return Number.isFinite(ms) ? ms : 0
+}
+
+async function waitForTokenRoom(promptText) {
+  const needed = Math.ceil(promptText.length / 3.5) + 1100
+  const wait = rateState.resetAt - Date.now()
+  if (rateState.remaining < needed && wait > 0) {
+    await new Promise((resolve) => setTimeout(resolve, Math.min(wait + 200, 9000)))
+  }
+}
+
+function noteRateHeaders(res) {
+  const rem = parseInt(res.headers.get('x-ratelimit-remaining-tokens') || '', 10)
+  const reset = parseDurationMs(res.headers.get('x-ratelimit-reset-tokens'))
+  if (Number.isFinite(rem)) {
+    rateState.remaining = rem
+    rateState.resetAt = Date.now() + reset
+  }
+}
+
 async function callLLM(promptText, { asJson = false } = {}) {
   if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY is not configured on the server.')
 
@@ -70,6 +102,7 @@ async function callLLM(promptText, { asJson = false } = {}) {
   let currentPrompt = promptText
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    await waitForTokenRoom(currentPrompt)
     const res = await fetch(GROQ_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
@@ -85,6 +118,7 @@ async function callLLM(promptText, { asJson = false } = {}) {
       }),
     })
 
+    noteRateHeaders(res)
     if (res.ok) {
       const data = await res.json()
       const text = data?.choices?.[0]?.message?.content
@@ -114,7 +148,7 @@ async function callLLM(promptText, { asJson = false } = {}) {
     // so the whole request still finishes inside the app's 20s timeout.
     const hinted = /try again in ([\d.]+)\s*(ms|s)/i.exec(errText)
     const hintMs = hinted ? Math.ceil(parseFloat(hinted[1]) * (hinted[2].toLowerCase() === 'ms' ? 1 : 1000)) + 300 : 0
-    const delayMs = Math.min(Math.max(hintMs, attempt * 1000), 5000)
+    const delayMs = Math.min(Math.max(hintMs, attempt * 1000), 8000)
     await new Promise((resolve) => setTimeout(resolve, delayMs))
   }
 
@@ -507,7 +541,7 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
   return jsonResponse({ sessionId, completed: true, result })
 }
 
-const GENERIC_ERROR = 'Unable to process your response.'
+const GENERIC_ERROR = 'Action Unsuccessful'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })

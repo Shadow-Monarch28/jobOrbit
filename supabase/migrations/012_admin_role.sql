@@ -1,10 +1,12 @@
--- Marks ONE account as the site admin. Admins see raw error details in the
--- app; every other account sees friendly messages. Replace the email, run
--- once, then sign out and back in on that account.
--- (app_metadata can only be changed here, never by the user themselves.)
+-- Marks admin@joborbit.com as the site admin: admins see raw error details in
+-- the app, everyone else sees "Action Unsuccessful".
+-- 1) Supabase Dashboard > Authentication > Users > Add user > Create new user
+--    (email admin@joborbit.com, your password, tick "Auto Confirm User").
+-- 2) Run this script once. 3) Sign out and back in as that user.
+-- app_metadata can only be changed here, never by a user themselves.
 update auth.users
 set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
-where email = 'YOUR_ADMIN_EMAIL@example.com';
+where email = 'admin@joborbit.com';
 
 -- To remove admin later:
 -- update auth.users set raw_app_meta_data = raw_app_meta_data - 'role' where email = '...';

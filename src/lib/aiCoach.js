@@ -4,7 +4,7 @@ import { supabase } from './supabase'
 // hangs, the user sees a clear message and a Retry button instead of a
 // frozen screen, rather than waiting indefinitely. The real request may
 // still finish server-side; this only stops the UI from blocking on it.
-const REQUEST_TIMEOUT_MS = 20000
+const REQUEST_TIMEOUT_MS = 40000
 
 async function invokeAiCoach(payload) {
   const timeout = new Promise((_, reject) =>

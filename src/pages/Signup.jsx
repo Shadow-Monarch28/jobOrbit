@@ -20,7 +20,7 @@ export default function Signup() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!agreed) {
-      setError('Please agree to the Terms of Service and Privacy Policy to continue.')
+      setError('Almost there! Accept the Terms of Service and Privacy Policy to continue.')
       return
     }
     setError('')
@@ -28,7 +28,7 @@ export default function Signup() {
     const { data, error } = await signUp(email, password)
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(/already registered/i.test(error.message) ? "You're Already in Orbit! Log in to continue." : error.message)
       return
     }
     // If email confirmation is on (Supabase default), there's no session yet.

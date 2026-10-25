@@ -16,3 +16,8 @@ create policy "Users update own avatar" on storage.objects for update to authent
 drop policy if exists "Users delete own avatar" on storage.objects;
 create policy "Users delete own avatar" on storage.objects for delete to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Uploading over an existing picture (upsert) also needs read access to the row.
+drop policy if exists "Avatars are readable" on storage.objects;
+create policy "Avatars are readable" on storage.objects for select to public
+  using (bucket_id = 'avatars');

@@ -10,7 +10,7 @@ export default function ErrorNotice({
   onRetry,
   retryLabel = 'Retry',
   retryDisabled = false,
-  userMessage = 'Something went wrong. Please try again.',
+  userMessage = 'Action Unsuccessful',
 }) {
   const { isAdmin } = useAuth()
   const [showDetail, setShowDetail] = useState(false)
