@@ -1,6 +1,44 @@
 import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../lib/supabase'
 import { startMockInterview, continueMockInterview } from '../lib/aiCoach'
 import ErrorNotice from './ErrorNotice'
+
+const HINT_KEY = 'jo_mock_hint_dismissed'
+const SYNC_INTERVAL_MS = 4000
+
+function readHintDismissed() {
+  try {
+    return localStorage.getItem(HINT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+// Turns the stored ai_sessions.messages into what the chat shows. Feedback on
+// an answer is shown as a pill just before the question it led to.
+function toTranscript(messages) {
+  const out = []
+  for (const m of messages || []) {
+    if (m.role === 'user') out.push({ role: 'user', text: m.text })
+    else if (m.role === 'assistant') {
+      if (m.feedback) out.push({ role: 'feedback', text: m.feedback })
+      out.push({ role: 'assistant', kind: m.kind || 'question', text: m.text })
+    }
+  }
+  return out
+}
+
+function countQuestionMessages(messages) {
+  return (messages || []).filter((m) => m.role === 'assistant' && (!m.kind || m.kind === 'question')).length
+}
+
+function lastQuestionText(messages) {
+  for (let i = (messages || []).length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m.role === 'assistant' && (!m.kind || m.kind === 'question')) return m.text
+  }
+  return null
+}
 
 export default function MockInterviewChat({ applicationId, onComplete }) {
   const [sessionId, setSessionId] = useState(null)
@@ -15,6 +53,11 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
   const [pendingAnswer, setPendingAnswer] = useState(null) // kept so a failed send can be retried without retyping
   const [progress, setProgress] = useState({ turn: 0, max: 10 })
 
+  const [hintDismissed, setHintDismissed] = useState(readHintDismissed)
+  const busyRef = useRef(false) // true while this device is waiting on the interviewer
+  const syncedCountRef = useRef(0) // how many stored messages the screen already reflects
+  const sessionIdRef = useRef(null)
+
   const scrollAnchorRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -25,18 +68,56 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [transcript, loading, summary])
 
+  // Puts a stored session on screen. `messages` is the source of truth, so the
+  // same code serves first load, resuming on another device and live sync.
+  function applyStored(row) {
+    const msgs = row.messages || []
+    syncedCountRef.current = msgs.length
+    setTranscript(toTranscript(msgs))
+    setProgress({ turn: countQuestionMessages(msgs), max: 10 })
+    if (row.status === 'completed' && row.result) {
+      setSummary(row.result)
+      setQuestion(null)
+    } else {
+      setQuestion(lastQuestionText(msgs))
+    }
+  }
+
   useEffect(() => {
     let active = true
     async function begin() {
       setLoading(true)
       setError(null)
       try {
+        // Resume an interview already in progress (started on any device).
+        const { data: existing } = await supabase
+          .from('ai_sessions')
+          .select('id, messages, status, result')
+          .eq('application_id', applicationId)
+          .eq('mode', 'mock_interview')
+          .eq('status', 'in_progress')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (!active) return
+        if (existing) {
+          setSessionId(existing.id)
+          sessionIdRef.current = existing.id
+          applyStored(existing)
+          return
+        }
         const res = await startMockInterview({ applicationId })
         if (!active) return
         setSessionId(res.sessionId)
-        setQuestion(res.question)
-        setTranscript([{ role: 'assistant', kind: 'question', text: res.question }])
-        setProgress({ turn: res.turnNumber, max: res.maxTurns })
+        sessionIdRef.current = res.sessionId
+        if (res.messages) {
+          applyStored({ messages: res.messages, status: 'in_progress' })
+        } else {
+          syncedCountRef.current = 1
+          setQuestion(res.question)
+          setTranscript([{ role: 'assistant', kind: 'question', text: res.question }])
+          setProgress({ turn: res.turnNumber, max: res.maxTurns })
+        }
       } catch (err) {
         if (active) setError(err.message || 'Could not start the interview.')
       } finally {
@@ -48,6 +129,60 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
       active = false
     }
   }, [applicationId])
+
+  // Quiet background sync: reads the stored session straight from the
+  // database (no AI call, so no usage), on a timer and on realtime pushes.
+  // Nothing visible happens unless the other device added something.
+  useEffect(() => {
+    if (!sessionId) return undefined
+    let cancelled = false
+
+    async function sync() {
+      if (busyRef.current || document.hidden) return
+      const { data } = await supabase
+        .from('ai_sessions')
+        .select('messages, status, result')
+        .eq('id', sessionId)
+        .maybeSingle()
+      if (cancelled || !data || busyRef.current) return
+      const count = (data.messages || []).length
+      if (count > syncedCountRef.current || (data.status === 'completed' && data.result)) {
+        applyStored(data)
+        setError(null)
+      }
+    }
+
+    const timer = setInterval(sync, SYNC_INTERVAL_MS)
+    const onVisible = () => {
+      if (!document.hidden) sync()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    const channel = supabase
+      .channel(`ai_session_${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ai_sessions', filter: `id=eq.${sessionId}` },
+        () => sync()
+      )
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      supabase.removeChannel(channel)
+    }
+  }, [sessionId])
+
+  function dismissHint() {
+    setHintDismissed(true)
+    try {
+      localStorage.setItem(HINT_KEY, '1')
+    } catch {
+      // storage unavailable: it just comes back next visit
+    }
+  }
 
   function resetTextareaHeight() {
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
@@ -87,11 +222,13 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
   }
 
   async function sendAnswer(myAnswer) {
+    busyRef.current = true
     setLoading(true)
     setError(null)
     try {
       const res = await continueMockInterview({ sessionId, userAnswer: myAnswer })
       setPendingAnswer(null)
+      syncedCountRef.current += res.completed ? 1 : 2
       if (res.completed) {
         setSummary(res.summary)
         setQuestion(null)
@@ -117,6 +254,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
           : err.message || 'Something went wrong continuing the interview.'
       )
     } finally {
+      busyRef.current = false
       setLoading(false)
     }
   }
@@ -292,9 +430,20 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
           className="shrink-0 border-t px-3 sm:px-4 py-3 flex flex-wrap items-end gap-2"
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
         >
-          <p className="basis-full text-[11px] text-[var(--color-text-muted)] -mt-1">
-            Answer in a few sentences. Not sure what's being asked? Ask first. Doubts don't count as a question.
-          </p>
+          {!hintDismissed && (
+            <div className="basis-full flex items-center gap-2 -mt-1">
+              <p className="flex-1 text-[11px] text-[var(--color-text-muted)]">
+                Answer in a few sentences. Not sure what's being asked? Ask first. Doubts don't count as a question.
+              </p>
+              <button
+                onClick={dismissHint}
+                className="text-[11px] font-medium px-2.5 py-0.5 rounded-full border shrink-0"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+              >
+                OK
+              </button>
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             value={answer}

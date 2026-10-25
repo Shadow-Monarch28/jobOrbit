@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
     // supabase-js (it parses the token out of the URL automatically).
     resetPassword: (email) =>
       supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/reset-password`,
       }),
     // Only works when a recovery (or normal) session is already active —
     // i.e. called from the /reset-password page after following the email

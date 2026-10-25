@@ -20,7 +20,10 @@ export default function InterviewLab() {
   const [loading, setLoading] = useState(true)
   const [applications, setApplications] = useState([])
   const [resumes, setResumes] = useState([])
+  // application ids that have a mock interview in progress (on any device)
+  const [inProgress, setInProgress] = useState(() => new Set())
   const [selected, setSelected] = useState(null) // application object
+  const [reloadKey, setReloadKey] = useState(0)
   const [activeMode, setActiveMode] = useState(null) // 'mock_interview' | 'question_bank' | 'skill_gaps'
 
   useEffect(() => {
@@ -28,19 +31,26 @@ export default function InterviewLab() {
     async function load() {
       if (!user) return
       setLoading(true)
-      const [{ data: apps, error: appsErr }, { data: res, error: resErr }] = await Promise.all([
+      const [{ data: apps, error: appsErr }, { data: res, error: resErr }, { data: live }] = await Promise.all([
         supabase
           .from('applications')
           .select('*')
           .eq('user_id', user.id)
           .order('applied_at', { ascending: false }),
         supabase.from('resumes').select('id, file_name').eq('user_id', user.id),
+        supabase
+          .from('ai_sessions')
+          .select('application_id')
+          .eq('user_id', user.id)
+          .eq('mode', 'mock_interview')
+          .eq('status', 'in_progress'),
       ])
       if (!active) return
       if (appsErr) console.error('InterviewLab applications fetch failed:', appsErr)
       if (resErr) console.error('InterviewLab resumes fetch failed:', resErr)
       setApplications(apps || [])
       setResumes(res || [])
+      setInProgress(new Set((live || []).map((r) => r.application_id)))
       setLoading(false)
     }
     load()
@@ -52,7 +62,12 @@ export default function InterviewLab() {
     // a backgrounded tab regains focus. Depending on the object reference
     // reran this fetch on every tab switch, flashing the whole page back
     // to a loading state even mid-interview.
-  }, [user?.id])
+  }, [user?.id, reloadKey])
+
+  // "Start Mock Interview" becomes "Continue Interview" when one is already running.
+  function labelFor(app, mode, label) {
+    return mode === 'mock_interview' && inProgress.has(app.id) ? 'Continue Interview' : label
+  }
 
   function selectApplication(app, mode) {
     setSelected(app)
@@ -62,6 +77,7 @@ export default function InterviewLab() {
   function backToList() {
     setSelected(null)
     setActiveMode(null)
+    setReloadKey((k) => k + 1)
   }
 
   // Check `selected` before `loading` — once you're mid-interview/review,
@@ -153,7 +169,7 @@ export default function InterviewLab() {
                     className="text-sm px-4 py-2 rounded-lg font-medium text-white"
                     style={{ backgroundColor: 'var(--color-accent)' }}
                   >
-                    {rec.primaryLabel}
+                    {labelFor(app, rec.primary, rec.primaryLabel)}
                   </button>
                   {rec.secondary && (
                     <button
@@ -161,7 +177,7 @@ export default function InterviewLab() {
                       className="text-sm px-4 py-2 rounded-lg border"
                       style={{ borderColor: 'var(--color-border)' }}
                     >
-                      {rec.secondaryLabel}
+                      {labelFor(app, rec.secondary, rec.secondaryLabel)}
                     </button>
                   )}
                 </div>

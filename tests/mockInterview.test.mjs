@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import {
   MAX_INTERVIEW_TURNS, MAX_SIDE_TURNS_PER_QUESTION, CLOSING_CLARIFY, CLOSING_REDIRECT,
-  countQuestions, sideTurnsOnCurrentQuestion, buildTranscript, runInterviewTurn,
+  countQuestions, sideTurnsOnCurrentQuestion, buildTranscript, runInterviewTurn, looksLikeNonAnswer, looksLikeDoubt,
 } from '../supabase/functions/_shared/mockInterview.ts'
 
 const job = { title: 'Business Analyst', company: 'Acme' }
@@ -94,7 +94,33 @@ assert.equal(t, 'Interviewer: Q\nCandidate: Real answer')
 
 // 10. unusable model output gives the friendly retry message, not a crash
 await assert.rejects(
-  runInterviewTurn({ messages: [{ role: 'assistant', text: 'Q' }, { role: 'user', text: 'a' }], job, callLLM: async () => '{}', safeParseJson: parse }),
+  runInterviewTurn({ messages: [{ role: 'assistant', text: 'Q' }, { role: 'user', text: 'I handled the reporting for the finance team last year.' }], job, callLLM: async () => '{}', safeParseJson: parse }),
   /had trouble forming its response/,
 )
+// 11. gibberish / greetings never reach the LLM and always get the highlighted redirect
+for (const junk of ['hi ho you doing', 'hello', 'ok', 'idk', 'asdfgh jkl', 'hey how are you']) {
+  let called = false
+  const out = await runInterviewTurn({
+    messages: [{ role: 'assistant', kind: 'question', text: 'What does a stakeholder need from you?' }, { role: 'user', text: junk }],
+    job, callLLM: async () => { called = true; return '{}' }, safeParseJson: parse,
+  })
+  assert.equal(out.type, 'side', junk); assert.equal(out.kind, 'redirect', junk)
+  assert.equal(called, false, `no LLM call for "${junk}"`)
+  assert.match(out.reply, /What does a stakeholder need from you\?/)
+}
+
+// 12. a doubt is clarified, never advanced
+for (const d of ['what does stakeholder mean?', 'I did not understand the question', 'can you explain stakeholder']) {
+  const out = await runInterviewTurn({
+    messages: [{ role: 'assistant', kind: 'question', text: 'How do you manage stakeholders?' }, { role: 'user', text: d }],
+    job, callLLM: async () => JSON.stringify({ reply: 'A stakeholder is anyone affected by the work.' }), safeParseJson: parse,
+  })
+  assert.equal(out.kind, 'clarification', d)
+  assert.ok(out.reply.endsWith(CLOSING_CLARIFY))
+}
+
+// 13. real short answers are not mistaken for junk
+for (const a of ['I would ask them what they need first.', 'I led a team of four analysts.']) {
+  assert.equal(looksLikeNonAnswer(a), false, a); assert.equal(looksLikeDoubt(a), false, a)
+}
 console.log('all mock interview tests passed')
