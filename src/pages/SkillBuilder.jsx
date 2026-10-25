@@ -176,8 +176,8 @@ export default function SkillBuilder() {
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold font-heading">Skill Builder</h1>
-      <p className="font-heading text-lg font-medium mt-1">Your Weak Spots. Your Next Superpower.</p>
-      <p className="text-[var(--color-text-muted)] mt-1">
+      <p className="font-heading text-lg font-medium mt-3">Your Weak Spots. Your Next Superpower.</p>
+      <p className="text-[var(--color-text-muted)] mt-2 leading-relaxed">
         Turn the skills you're missing into the skills that get you hired. Learn, practice, and level up
         with Orbit Mentor.
       </p>
@@ -188,13 +188,13 @@ export default function SkillBuilder() {
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
         >
           <p className="font-heading font-semibold">No skills to conquer. Yet.</p>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">
+          <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
             Run a Resume Review on a Not Selected application in Interview Lab to uncover your hidden
             growth opportunities.
           </p>
           <Link
             to="/interview-lab"
-            className="inline-block text-sm font-medium px-4 py-2 rounded-lg text-white mt-3"
+            className="inline-block text-sm font-medium px-4 py-2 rounded-lg text-white mt-4"
             style={{ backgroundColor: 'var(--color-accent)' }}
           >
             Go to Interview Lab

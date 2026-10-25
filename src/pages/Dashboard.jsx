@@ -262,7 +262,7 @@ export default function Dashboard() {
             {greeting}
             {firstName ? `, ${firstName}` : ''}
           </h1>
-          <p className="text-[var(--color-text-muted)] mt-2 max-w-md">
+          <p className="text-[var(--color-text-muted)] mt-3 max-w-md leading-relaxed">
             Your next big break could be one click away. Check your matches, revisit saved jobs, and keep your applications on track.
           </p>
         </div>
@@ -320,8 +320,8 @@ export default function Dashboard() {
         )
       ) : !defaultResume && activeView !== 'saved' ? (
         <div>
-          <p className="font-medium">Let's Find Your Perfect Fit.</p>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">
+          <p className="font-heading text-lg font-medium">Let's Find Your Perfect Fit.</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
             No resume, no matchmaking magic. Set a default resume in{' '}
             <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
               Resume Dock

@@ -154,31 +154,28 @@ export default function CareerInsights() {
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold font-heading">Career Insights</h1>
-      <p className="font-heading text-lg font-medium mt-1">Your Career Journey, With Receipts.</p>
-      <p className="text-[var(--color-text-muted)] mt-1">
+      <p className="font-heading text-lg font-medium mt-3">Your Career Journey, With Receipts.</p>
+      <p className="text-[var(--color-text-muted)] mt-2 leading-relaxed">
         Your job hunt has a story. Track your applications, measure your interview prep, and watch your
         skills level up — one move at a time.
       </p>
-      <p className="text-sm font-medium mt-3" style={{ color: 'var(--color-accent)' }}>
-        Your progress. Your data. Your next power move.
-      </p>
 
-      <h2 className="font-heading text-lg font-semibold mt-8">Your Career at a Glance</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+      <h2 className="font-heading text-lg font-semibold mt-10">Your Career at a Glance</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
         <StatTile value={totalApps} label="Applications Tracked" note="Every application has a place. No more lost leads." />
         <StatTile value={mockInterviews} label="Mock Interviews Completed" note="Practice makes progress. Keep those reps coming." />
         <StatTile value={resumeReviews} label="Resume Reviews Completed" note="Find the gaps before recruiters do." />
         <StatTile value={readySkills} label="Interview-Ready Skills" note="Skills rated 4/5 or higher. That's resume-worthy progress." />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-10">
         <h2 className="font-heading text-lg font-semibold">Applications by Status</h2>
-        <p className="font-medium mt-1">Every Application Has a Plot.</p>
-        <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
+        <p className="font-medium mt-3">Every Application Has a Plot.</p>
+        <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
           From Not Applied to Shortlisted — or even Not Selected — see where every opportunity stands.
         </p>
         {totalApps === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)] mt-2">
+          <p className="text-sm text-[var(--color-text-muted)] mt-4">
             No applications tracked yet.
           </p>
         ) : (
@@ -191,11 +188,11 @@ export default function CareerInsights() {
         )}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-10">
         <h2 className="font-heading text-lg font-semibold">Skill Progress</h2>
-        <p className="font-medium mt-1">Your Next Level Is Loading...</p>
+        <p className="font-medium mt-3">Your Next Level Is Loading...</p>
         {skills.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)] mt-2">
+          <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
             No skills practiced yet. Run a Resume Review to uncover skill gaps, then head to{' '}
             <Link to="/skill-builder" style={{ color: 'var(--color-accent)' }}>
               Skill Builder

@@ -60,18 +60,18 @@ export default function HowItWorks() {
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl sm:text-3xl font-semibold font-heading">How it Works</h1>
-      <p className="font-heading text-xl font-medium mt-1">One Orbit. Every Step Counts.</p>
-      <p className="font-medium mt-1" style={{ color: 'var(--color-accent)' }}>
+      <p className="font-heading text-xl font-medium mt-3">One Orbit. Every Step Counts.</p>
+      <p className="font-medium mt-3" style={{ color: 'var(--color-accent)' }}>
         Upload. Discover. Apply. Review. Improve. Grow.
       </p>
-      <p className="text-[var(--color-text-muted)] mt-3 leading-relaxed">
+      <p className="text-[var(--color-text-muted)] mt-5 leading-relaxed">
         Six connected stages turn your career goals into actionable steps. Your resume powers your
         matches, your reviews reveal opportunities to improve, and your progress comes to life through
         personalized insights.
       </p>
-      <p className="text-sm font-medium mt-2">Your journey. Your data. Your momentum.</p>
+      <p className="text-sm font-medium mt-4">Your journey. Your data. Your momentum.</p>
 
-      <div className="flex flex-col gap-4 mt-8">
+      <div className="flex flex-col gap-5 mt-10">
         {STEPS.map((step, i) => (
           <div key={step.number} className="relative pl-14 sm:pl-16">
             {i < STEPS.length - 1 && (
@@ -96,11 +96,11 @@ export default function HowItWorks() {
               <p className="text-xs font-medium text-[var(--color-text-muted)]">
                 {step.number} — {step.title}
               </p>
-              <h2 className="font-heading text-lg font-semibold mt-0.5">{step.headline}</h2>
-              <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">{step.blurb}</p>
+              <h2 className="font-heading text-lg font-semibold mt-2">{step.headline}</h2>
+              <p className="text-sm text-[var(--color-text-muted)] mt-2.5 leading-relaxed">{step.blurb}</p>
               <Link
                 to={step.to}
-                className="inline-flex items-center gap-1 text-sm font-medium mt-3"
+                className="inline-flex items-center gap-1 text-sm font-medium mt-4"
                 style={{ color: 'var(--color-accent)' }}
               >
                 {step.cta} →
@@ -111,16 +111,16 @@ export default function HowItWorks() {
       </div>
 
       <div
-        className="rounded-xl border p-4 sm:p-5 mt-8"
+        className="rounded-xl border p-4 sm:p-5 mt-10"
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface-alt)' }}
       >
         <h2 className="font-heading text-lg font-semibold">Meet Orbit Mentor</h2>
-        <p className="font-medium mt-0.5">Your AI wingmate. No crystal ball required.</p>
-        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mt-2">
+        <p className="font-medium mt-2">Your AI wingmate. No crystal ball required.</p>
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mt-3">
           From mock interviews to resume reviews and skill-building, Orbit Mentor uses your actual resume
           and job data to deliver relevant questions, grounded evaluations, and useful learning resources.
         </p>
-        <p className="text-sm font-medium mt-2">No made-up wins. Just real progress toward your next big break.</p>
+        <p className="text-sm font-medium mt-4">No made-up wins. Just real progress toward your next big break.</p>
       </div>
     </div>
   )

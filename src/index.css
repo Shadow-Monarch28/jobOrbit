@@ -46,6 +46,31 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Form fields must follow the theme, not the browser default (which is black
+   and showed up as dark text on dark cards after a reload or autofill). */
+:root {
+  color-scheme: light;
+}
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+input,
+textarea {
+  color: var(--color-text);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.75;
+}
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  caret-color: var(--color-text);
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
 h1,
 h2,
 h3,

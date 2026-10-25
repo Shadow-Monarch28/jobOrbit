@@ -214,6 +214,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
     // instead of a fixed 3-line box.
     e.target.style.height = 'auto'
     e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'
+    e.target.style.overflowY = e.target.scrollHeight > 128 ? 'auto' : 'hidden'
   }
 
   async function handleRetry() {
@@ -448,7 +449,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
             placeholder="Type your answer or doubt…"
             rows={1}
             disabled={loading}
-            className="flex-1 text-sm px-3.5 py-2.5 rounded-2xl border resize-none max-h-32 disabled:opacity-60"
+            className="flex-1 text-sm px-3.5 py-2.5 rounded-2xl border resize-none max-h-32 overflow-hidden leading-5 disabled:opacity-60"
             style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}
           />
           <button

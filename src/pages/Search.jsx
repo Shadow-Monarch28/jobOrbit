@@ -117,8 +117,8 @@ export default function Search() {
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
       <h1 className="font-heading text-2xl font-semibold mb-1">Search Jobs</h1>
-      <p className="font-heading text-lg font-medium">Jobs Worth Catching Feelings For.</p>
-      <p className="text-sm text-[var(--color-text-muted)] mt-1 mb-6">
+      <p className="font-heading text-lg font-medium mt-3">Jobs Worth Catching Feelings For.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-2 mb-8 leading-relaxed">
         Explore real opportunities, find your kind of role, and give your career plot a plot twist.
       </p>
 

@@ -21,8 +21,7 @@ export const MAX_SIDE_TURNS_PER_QUESTION = 4
 export const MAX_ANSWER_CHARS = 4000
 export const LONG_ANSWER_WORDS = 30
 
-export const CLOSING_CLARIFY =
-  "Whenever you're ready, type your answer, or let me know if you have any follow-up questions."
+export const CLOSING_CLARIFY = "All clear? Let's get back to your answer."
 export const CLOSING_REDIRECT =
   'Please type an answer that is correct and reasonable: a few sentences in your own words.'
 

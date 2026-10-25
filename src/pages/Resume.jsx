@@ -558,27 +558,26 @@ export default function Resume({ mode = 'resume' }) {
     return (
       <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
         <h1 className="font-heading text-2xl font-semibold mb-1">Saved Jobs</h1>
-        <p className="font-heading text-lg font-medium">Saved the Job. Now Find Your Match.</p>
-        <p className="text-sm text-[var(--color-text-muted)] mt-1 mb-6">
+        <p className="font-heading text-lg font-medium mt-3">Saved the Job. Now Find Your Match.</p>
+        <p className="text-sm text-[var(--color-text-muted)] mt-2 mb-8 leading-relaxed">
           Your saved opportunities, your skills, your next big move. JobOrbit compares your default
           resume against saved jobs to show you which roles fit you best.
         </p>
         {!loadingList && !defaultResume && (
           <div
-            className="rounded-xl border p-4 mb-5"
+            className="rounded-xl border p-5 mb-6"
             style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
           >
-            <p className="font-heading font-semibold">Your resume is the missing piece.</p>
-            <p className="text-sm text-[var(--color-text-muted)] mt-1">
-              Upload your resume in{' '}
-              <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
-                Account Details
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+              Your saved jobs are ready to go. Head to{' '}
+              <Link to="/tracker" className="underline" style={{ color: 'var(--color-accent)' }}>
+                Applications
               </Link>{' '}
-              to discover how well each saved job matches your skills and experience.
+              to review your matches and take the next step toward landing the role.
             </p>
-            <p className="font-medium mt-3">Ready to unlock your matches?</p>
-            <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-              Set a default resume in Account Details and let the matching magic begin.
+            <p className="font-heading font-semibold mt-5">Ready to make your move?</p>
+            <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
+              Explore your saved jobs and start applying to the opportunities that fit you best.
             </p>
           </div>
         )}
@@ -589,18 +588,11 @@ export default function Resume({ mode = 'resume' }) {
 
   return (
     <div id="resume" style={{ scrollMarginTop: '5rem' }}>
-      <h2 className="font-heading text-xl font-semibold mb-1">Resume Dock</h2>
-      <p className="font-medium">Your Resume Does the Talking. We Find the Match.</p>
-      <p className="text-sm text-[var(--color-text-muted)] mt-1">
+      <h2 className="font-heading text-xl font-semibold">Resume Dock</h2>
+      <p className="font-medium mt-3">Your Resume Does the Talking. We Find the Match.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-2 mb-5 leading-relaxed">
         Drop in your PDF or DOCX and let JobOrbit uncover the skills hiding in plain sight. Your
         default resume powers personalized job matches across the app.
-      </p>
-      <p className="text-sm font-medium mt-2 mb-1" style={{ color: 'var(--color-accent)' }}>
-        Upload. Match. Make moves.
-      </p>
-      <p className="text-xs text-[var(--color-text-muted)] mb-4">
-        Pro tip: Set your uploaded resume as your default to unlock personalized match scores for your
-        saved jobs.
       </p>
 
       <div
@@ -679,8 +671,9 @@ export default function Resume({ mode = 'resume' }) {
       )}
 
       {!loadingList && resumes.length === 0 && (
-        <p className="text-sm text-[var(--color-text-muted)]">
-          No resume uploaded yet — upload one above to get started.
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+          Pro tip: Set your uploaded resume as your default to unlock personalized match scores for your
+          saved jobs.
         </p>
       )}
 

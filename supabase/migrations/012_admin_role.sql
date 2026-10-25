@@ -10,3 +10,11 @@ where email = 'admin@joborbit.com';
 
 -- To remove admin later:
 -- update auth.users set raw_app_meta_data = raw_app_meta_data - 'role' where email = '...';
+
+-- OPTIONAL: set or change the admin's password with SQL instead of the dashboard.
+-- Replace the text between the quotes, run it once, then delete it from the editor.
+-- (Passwords are stored hashed; plain text is never saved.)
+-- update auth.users
+-- set encrypted_password = extensions.crypt('PUT-THE-ADMIN-PASSWORD-HERE', extensions.gen_salt('bf')),
+--     updated_at = now()
+-- where email = 'admin@joborbit.com';

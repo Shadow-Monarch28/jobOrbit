@@ -55,8 +55,8 @@ export default function QuestionBankPanel({ job, categorySlug }) {
   return (
     <div>
       <h3 className="font-heading text-lg font-semibold">{category.label} — Question Bank</h3>
-      <p className="font-medium mt-1">Your Interview Warm-Up Starts Here.</p>
-      <p className="text-sm text-[var(--color-text-muted)] mt-1">
+      <p className="font-medium mt-3">Your Interview Warm-Up Starts Here.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
         Think of this as your interview gym. Work through role-specific questions, use hints to sharpen
         your answers, and get comfortable with the challenge before the real spotlight hits.
       </p>
