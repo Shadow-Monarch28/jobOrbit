@@ -21,6 +21,7 @@ import {
   MAX_INTERVIEW_TURNS,
   MAX_ANSWER_CHARS,
   countQuestions,
+  currentQuestionText,
   buildTranscript,
   runInterviewTurn,
 } from '../_shared/mockInterview.ts'
@@ -237,6 +238,31 @@ async function handleMockInterview(supabase, userId, body) {
       .eq('user_id', userId)
       .single()
     if (appErr || !application) return jsonResponse({ error: 'Application not found.' }, 404)
+
+    // One interview in progress per application: a second device (or a
+    // double-click) gets the existing session back instead of a new one.
+    const { data: existing } = await supabase
+      .from('ai_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('application_id', applicationId)
+      .eq('mode', 'mock_interview')
+      .eq('status', 'in_progress')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (existing) {
+      const msgs = existing.messages || []
+      return jsonResponse({
+        sessionId: existing.id,
+        question: currentQuestionText(msgs),
+        messages: msgs,
+        resumed: true,
+        turnNumber: countQuestions(msgs),
+        maxTurns: MAX_INTERVIEW_TURNS,
+        completed: false,
+      })
+    }
 
     const job = application.job_data || {}
     const prompt = `You are a friendly but realistic interviewer conducting a mock interview for the role of "${job.title || 'this role'}"${job.company ? ' at ' + job.company : ''}.
