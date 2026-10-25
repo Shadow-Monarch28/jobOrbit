@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { requestResumeReview } from '../lib/aiCoach'
 import { getSkillResources } from '../lib/skillResources'
@@ -30,7 +31,17 @@ export default function ResumeReviewPanel({ applicationId, resumes }) {
         See which resume you used for this application and how it compares to the job description.
       </p>
 
-      {!result && (
+      {!result && (resumes || []).length === 0 && (
+        <p className="text-sm mt-4">
+          Upload your resume in{' '}
+          <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
+            Account Details
+          </Link>{' '}
+          to get a review for this application.
+        </p>
+      )}
+
+      {!result && (resumes || []).length > 0 && (
         <div className="mt-4 flex flex-col sm:flex-row gap-2">
           <select
             value={resumeId}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { statusLabel, STATUS_COLOR } from '../lib/applicationStatus'
@@ -40,7 +41,7 @@ export default function InterviewLab() {
         supabase.from('resumes').select('id, file_name').eq('user_id', user.id),
         supabase
           .from('ai_sessions')
-          .select('application_id')
+          .select('application_id, messages')
           .eq('user_id', user.id)
           .eq('mode', 'mock_interview')
           .eq('status', 'in_progress'),
@@ -50,7 +51,15 @@ export default function InterviewLab() {
       if (resErr) console.error('InterviewLab resumes fetch failed:', resErr)
       setApplications(apps || [])
       setResumes(res || [])
-      setInProgress(new Set((live || []).map((r) => r.application_id)))
+      // "Continue" only when the person has actually answered something;
+      // a session that was opened but never answered still reads "Start".
+      setInProgress(
+        new Set(
+          (live || [])
+            .filter((r) => (r.messages || []).some((m) => m.role === 'user'))
+            .map((r) => r.application_id)
+        )
+      )
       setLoading(false)
     }
     load()
@@ -128,7 +137,11 @@ export default function InterviewLab() {
 
       {applications.length === 0 && (
         <p className="text-sm text-[var(--color-text-muted)] mt-6">
-          You don't have any tracked applications yet. Apply to a job from Discover to get started.
+          Nothing to practise on yet. Upload your resume in{' '}
+          <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
+            Account Details
+          </Link>{' '}
+          and apply to a job from Discover to start a mock interview.
         </p>
       )}
 

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -42,7 +42,8 @@ export default function App() {
             >
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/search" element={<Search />} />
-              <Route path="/resume" element={<Resume />} />
+              <Route path="/saved-jobs" element={<Resume mode="saved" />} />
+              <Route path="/resume" element={<Navigate to="/account#resume" replace />} />
               <Route path="/jobs/:id" element={<JobDetail />} />
               <Route path="/tracker" element={<Tracker />} />
               <Route path="/interview/:roleId" element={<Interview />} />

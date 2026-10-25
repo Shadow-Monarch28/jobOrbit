@@ -94,6 +94,7 @@ async function callLLM(promptText, { asJson = false } = {}) {
 
     const errText = await res.text()
     lastError = new Error(`Groq API error ${res.status}: ${errText}`)
+    if (res.status === 429) lastError.code = 'rate_limited'
 
     // 503 (service unavailable) and 429 (rate limited) are transient —
     // retry with backoff. Groq's own 400 json_validate_failed is also
@@ -109,7 +110,11 @@ async function callLLM(promptText, { asJson = false } = {}) {
       currentPrompt = `${promptText}\n\nIMPORTANT: Your last response failed JSON validation. Respond with ONLY a single valid JSON object — no markdown fences, no commentary before or after, no trailing commas, and make sure every opened brace/bracket/quote is closed.`
     }
 
-    const delayMs = attempt * 1000 // 1s, then 2s
+    // Groq tells us how long to wait ("try again in 2.7s"); honour it, capped
+    // so the whole request still finishes inside the app's 20s timeout.
+    const hinted = /try again in ([\d.]+)\s*(ms|s)/i.exec(errText)
+    const hintMs = hinted ? Math.ceil(parseFloat(hinted[1]) * (hinted[2].toLowerCase() === 'ms' ? 1 : 1000)) + 300 : 0
+    const delayMs = Math.min(Math.max(hintMs, attempt * 1000), 5000)
     await new Promise((resolve) => setTimeout(resolve, delayMs))
   }
 
@@ -349,7 +354,7 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
 
   if (outcome.type === 'finish') {
     // The ratings use real answers only (side exchanges are left out).
-    const transcript = buildTranscript(messages, { finalOnly: true })
+    const transcript = buildTranscript(messages, { finalOnly: true, compact: true })
     const summaryPrompt = `You are reviewing a completed mock interview for the role of "${job.title || 'this role'}"${job.company ? ' at ' + job.company : ''}.
 
 TRANSCRIPT:
@@ -502,13 +507,18 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
   return jsonResponse({ sessionId, completed: true, result })
 }
 
+const GENERIC_ERROR = 'Unable to process your response.'
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
 
+  let isAdmin = false
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     const user = await getAuthedUser(req, supabase)
     if (!user) return jsonResponse({ error: 'Unauthorized' }, 401)
+    // app_metadata can only be set server-side (SQL / dashboard), never by the user.
+    isAdmin = user.app_metadata?.role === 'admin'
 
     const body = await req.json()
     if (body.action === 'resume_review') return await handleResumeReview(supabase, user.id, body)
@@ -517,6 +527,9 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Unknown action. Use "mock_interview", "resume_review", or "skill_builder".' }, 400)
   } catch (err) {
     console.error('ai-coach function error:', err)
-    return jsonResponse({ error: err.message || 'Internal error' }, 500)
+    // Admins get the raw error (Groq status, quota text...). Everyone else gets
+    // a calm message, so provider and account details never reach the browser.
+    const code = err.code === 'rate_limited' ? 'rate_limited' : 'internal'
+    return jsonResponse({ error: isAdmin ? err.message || 'Internal error' : GENERIC_ERROR, code }, code === 'rate_limited' ? 429 : 500)
   }
 })

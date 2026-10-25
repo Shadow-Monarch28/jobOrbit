@@ -11,10 +11,10 @@ const STEPS = [
   },
   {
     number: '02',
-    title: 'Career Profile',
+    title: 'Resume & Saved Jobs',
     blurb:
       'Upload your resume and JobOrbit reads the skills straight out of it — no manual tagging. Your saved jobs are automatically scored against it, so you see your best-fit matches first.',
-    to: '/resume',
+    to: '/account#resume',
     cta: 'Upload your resume',
   },
   {

@@ -248,11 +248,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
       }
     } catch (err) {
       // pendingAnswer stays set so "Retry" can resend without retyping
-      setError(
-        (err.message || '').includes('503') || (err.message || '').includes('UNAVAILABLE')
-          ? "Orbit Mentor is under heavy load right now. Your answer wasn't lost — click Retry."
-          : err.message || 'Something went wrong continuing the interview.'
-      )
+      setError(err.message || 'Something went wrong continuing the interview.')
     } finally {
       busyRef.current = false
       setLoading(false)
@@ -415,6 +411,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
             <div className="max-w-[90%]">
               <ErrorNotice
                 message={error}
+                userMessage="Unable to process your response."
                 onRetry={pendingAnswer ? handleRetry : undefined}
                 retryDisabled={loading}
               />

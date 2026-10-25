@@ -2,6 +2,7 @@ import Logo from '../components/logo'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import OrbitArt from '../components/OrbitArt'
+import SocialFooter from '../components/SocialFooter'
 
 const FEATURES = [
   {
@@ -121,8 +122,8 @@ export default function Landing() {
         </div>
       </main>
 
-      <footer className="text-center text-xs text-[var(--color-text-muted)] py-6">
-        JobOrbit — free to use, no paid tiers.
+      <footer className="py-6">
+        <SocialFooter />
       </footer>
     </div>
   )
