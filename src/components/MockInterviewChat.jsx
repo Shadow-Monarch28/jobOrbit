@@ -5,7 +5,9 @@ import ErrorNotice from './ErrorNotice'
 export default function MockInterviewChat({ applicationId, onComplete }) {
   const [sessionId, setSessionId] = useState(null)
   const [question, setQuestion] = useState(null)
-  const [transcript, setTranscript] = useState([]) // [{role: 'assistant'|'user'|'feedback', text}]
+  // [{role: 'assistant'|'user'|'feedback', kind?: 'question'|'clarification'|'redirect', text}]
+  // Only 'question' bubbles are numbered; doubts and redirects never use up a question.
+  const [transcript, setTranscript] = useState([])
   const [answer, setAnswer] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -33,7 +35,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
         if (!active) return
         setSessionId(res.sessionId)
         setQuestion(res.question)
-        setTranscript([{ role: 'assistant', text: res.question }])
+        setTranscript([{ role: 'assistant', kind: 'question', text: res.question }])
         setProgress({ turn: res.turnNumber, max: res.maxTurns })
       } catch (err) {
         if (active) setError(err.message || 'Could not start the interview.')
@@ -94,12 +96,16 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
         setSummary(res.summary)
         setQuestion(null)
         onComplete?.(res.summary)
+      } else if (res.kind === 'clarification' || res.kind === 'redirect') {
+        // A doubt, or a message that wasn't an answer: same question stays
+        // open, the counter does not move.
+        setTranscript((t) => [...t, { role: 'assistant', kind: res.kind, text: res.reply }])
       } else {
         setQuestion(res.question)
         setTranscript((t) => [
           ...t,
           ...(res.feedback ? [{ role: 'feedback', text: res.feedback }] : []),
-          { role: 'assistant', text: res.question },
+          { role: 'assistant', kind: 'question', text: res.question },
         ])
         setProgress({ turn: res.turnNumber, max: res.maxTurns })
       }
@@ -167,11 +173,16 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
     )
   }
 
-  // Running question counter, derived straight from the transcript so it
-  // never drifts from what's actually shown on screen — question N is
-  // simply the Nth 'assistant' entry. This replaces the old "Question 5
-  // of 6" header line with inline numbering on each question bubble.
-  let questionCounter = 0
+  // Question numbers, derived from the transcript so they never drift from
+  // what is on screen. Only real questions are numbered; doubts and "not an
+  // answer" replies (kind clarification/redirect) get 0 and are not counted.
+  const questionNumbers = []
+  let askedSoFar = 0
+  for (const m of transcript) {
+    const isQuestion = m.role === 'assistant' && m.kind !== 'clarification' && m.kind !== 'redirect'
+    if (isQuestion) askedSoFar += 1
+    questionNumbers.push(isQuestion ? askedSoFar : 0)
+  }
 
   return (
     // Negative margin cancels the parent card's p-4/sm:p-5 padding so the
@@ -210,22 +221,38 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
           }
 
           const isAssistant = m.role === 'assistant'
-          if (isAssistant) questionCounter += 1
+          const isSide = isAssistant && (m.kind === 'clarification' || m.kind === 'redirect')
+          const isRedirect = isAssistant && m.kind === 'redirect'
 
           return (
             <div key={i} className="flex" style={{ justifyContent: isAssistant ? 'flex-start' : 'flex-end' }}>
               <div
                 className="rounded-2xl px-3.5 py-2.5 text-sm max-w-[80%] leading-relaxed whitespace-pre-wrap"
                 style={{
-                  backgroundColor: isAssistant ? 'var(--color-surface-alt)' : 'var(--color-accent)',
+                  backgroundColor: isRedirect
+                    ? 'color-mix(in srgb, var(--color-warning) 14%, var(--color-surface))'
+                    : isAssistant
+                      ? 'var(--color-surface-alt)'
+                      : 'var(--color-accent)',
                   color: isAssistant ? 'var(--color-text)' : '#fff',
+                  border: isRedirect ? '1px solid var(--color-warning)' : undefined,
                   borderBottomLeftRadius: isAssistant ? 4 : undefined,
                   borderBottomRightRadius: isAssistant ? undefined : 4,
                 }}
               >
-                {isAssistant && (
+                {isAssistant && !isSide && (
                   <span className="block text-[11px] font-semibold mb-0.5" style={{ color: 'var(--color-accent)' }}>
-                    Q{questionCounter}
+                    Q{questionNumbers[i]}
+                  </span>
+                )}
+                {isRedirect && (
+                  <span className="block text-[11px] font-semibold mb-0.5" style={{ color: 'var(--color-warning)' }}>
+                    Not quite what we're looking for
+                  </span>
+                )}
+                {m.kind === 'clarification' && (
+                  <span className="block text-[11px] font-semibold mb-0.5 text-[var(--color-text-muted)]">
+                    Interviewer
                   </span>
                 )}
                 {m.text}
@@ -262,15 +289,18 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
 
       {question && (
         <div
-          className="shrink-0 border-t px-3 sm:px-4 py-3 flex items-end gap-2"
+          className="shrink-0 border-t px-3 sm:px-4 py-3 flex flex-wrap items-end gap-2"
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
         >
+          <p className="basis-full text-[11px] text-[var(--color-text-muted)] -mt-1">
+            Answer in a few sentences. Not sure what's being asked? Ask first. Doubts don't count as a question.
+          </p>
           <textarea
             ref={textareaRef}
             value={answer}
             onChange={handleAnswerChange}
             onKeyDown={handleKeyDown}
-            placeholder="Type your answer here…"
+            placeholder="Type your answer or doubt…"
             rows={1}
             disabled={loading}
             className="flex-1 text-sm px-3.5 py-2.5 rounded-2xl border resize-none max-h-32 disabled:opacity-60"

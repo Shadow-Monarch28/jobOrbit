@@ -17,6 +17,13 @@
 //
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  MAX_INTERVIEW_TURNS,
+  MAX_ANSWER_CHARS,
+  countQuestions,
+  buildTranscript,
+  runInterviewTurn,
+} from '../_shared/mockInterview.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -38,12 +45,11 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-// Each question = 1 Groq call; the final summary = 1 more. At 1,000
-// requests/day free, 11 calls/interview (10 questions + 1 summary) is
-// trivial headroom — sized for a genuinely useful full practice session,
-// not quota survival. Re-check your real RPD/RPM at
-// https://console.groq.com/settings/limits before raising this further.
-const MAX_INTERVIEW_TURNS = 10
+// MAX_INTERVIEW_TURNS (imported above) is the number of real questions per
+// interview. Clarifications and "that's not an answer" replies are stored with
+// a `kind` and are NOT counted, so asking a doubt never uses up a question.
+// Each side reply costs one Groq call, so they are capped per question
+// (see MAX_SIDE_TURNS_PER_QUESTION in _shared/mockInterview.ts).
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -246,7 +252,7 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
         user_id: userId,
         application_id: applicationId,
         mode: 'mock_interview',
-        messages: [{ role: 'assistant', text: question }],
+        messages: [{ role: 'assistant', kind: 'question', text: question }],
         status: 'in_progress',
       })
       .select()
@@ -272,8 +278,11 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
   if (session.status === 'completed') return jsonResponse({ error: 'This interview session already finished.' }, 400)
   if (!userAnswer || !userAnswer.trim()) return jsonResponse({ error: 'An answer is required to continue.' }, 400)
 
-  const messages = [...(session.messages || []), { role: 'user', text: userAnswer.trim() }]
-  const turnsSoFar = messages.filter((m) => m.role === 'assistant').length
+  const messages = [
+    ...(session.messages || []),
+    { role: 'user', text: userAnswer.trim().slice(0, MAX_ANSWER_CHARS) },
+  ]
+  const turnsSoFar = countQuestions(messages)
 
   const { data: application } = await supabase
     .from('applications')
@@ -283,11 +292,38 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
     .single()
   const job = application?.job_data || {}
 
-  const transcript = messages
-    .map((m) => (m.role === 'assistant' ? `Interviewer: ${m.text}` : `Candidate: ${m.text}`))
-    .join('\n')
+  // One call decides what the candidate's message is (an answer, a doubt, or
+  // not an answer at all) and produces the matching reply.
+  const outcome = await runInterviewTurn({
+    messages,
+    job,
+    callLLM: (prompt) => callLLM(prompt, { asJson: true }),
+    safeParseJson,
+  })
 
-  if (turnsSoFar >= MAX_INTERVIEW_TURNS) {
+  // A doubt or an off-topic message: reply, stay on the same question, and
+  // leave the question count untouched.
+  if (outcome.type === 'side') {
+    const { error: sideErr } = await supabase
+      .from('ai_sessions')
+      .update({ messages: [...messages, outcome.message] })
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+    if (sideErr) console.error('ai_sessions update (mock_interview side reply) failed:', sideErr)
+
+    return jsonResponse({
+      sessionId,
+      kind: outcome.kind,
+      reply: outcome.reply,
+      turnNumber: turnsSoFar,
+      maxTurns: MAX_INTERVIEW_TURNS,
+      completed: false,
+    })
+  }
+
+  if (outcome.type === 'finish') {
+    // The ratings use real answers only (side exchanges are left out).
+    const transcript = buildTranscript(messages, { finalOnly: true })
     const summaryPrompt = `You are reviewing a completed mock interview for the role of "${job.title || 'this role'}"${job.company ? ' at ' + job.company : ''}.
 
 TRANSCRIPT:
@@ -324,26 +360,9 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
     return jsonResponse({ sessionId, completed: true, summary: result })
   }
 
-  // One call does two jobs — brief reaction to the last answer AND the next
-  // question — so the interview feels conversational without doubling the
-  // API calls.
-  const nextQuestionPrompt = `You are a friendly but realistic interviewer for the role of "${job.title || 'this role'}"${job.company ? ' at ' + job.company : ''}.
-
-TRANSCRIPT SO FAR:
-${transcript}
-
-Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
-{
-  "feedback": "<1-2 sentences reacting to the candidate's last answer specifically — what was good or what was missing. Be honest and direct, not falsely enthusiastic.>",
-  "nextQuestion": "<exactly one natural follow-up or new interview question, building on their last answer where relevant>"
-}`
-
-  const raw = await callLLM(nextQuestionPrompt, { asJson: true })
-  const parsed = safeParseJson(raw)
-  const feedback = typeof parsed.feedback === 'string' ? parsed.feedback : ''
-  const question = typeof parsed.nextQuestion === 'string' ? parsed.nextQuestion.trim() : ''
-
-  const updatedMessages = [...messages, { role: 'assistant', text: question, feedback }]
+  // A real answer: brief feedback plus the next question.
+  const { feedback, question } = outcome
+  const updatedMessages = [...messages, { role: 'assistant', kind: 'question', text: question, feedback }]
 
   const { error: updateErr } = await supabase
     .from('ai_sessions')
@@ -355,6 +374,7 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
 
   return jsonResponse({
     sessionId,
+    kind: 'question',
     question,
     feedback,
     turnNumber: turnsSoFar + 1,
