@@ -90,7 +90,7 @@ export default function Landing() {
                 className="px-5 py-2.5 rounded-lg font-medium text-white"
                 style={{ backgroundColor: 'var(--color-accent)' }}
               >
-                Get started — it's free
+               Find your fit
               </Link>
               <Link
                 to="/login"
