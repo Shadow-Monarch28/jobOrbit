@@ -145,3 +145,21 @@ console.log('all mock interview tests passed')
   assert.ok(t.length < 6000, `compact transcript too large: ${t.length}`)
 }
 console.log('extra tests passed')
+
+// 16. result building: filler words are counted from the candidate's own text; scores are clamped
+{
+  const { countFillerWords, buildInterviewResult } = await import('../supabase/functions/_shared/mockInterview.ts')
+  const msgs = [
+    { role: 'assistant', kind: 'question', text: 'Q1' },
+    { role: 'user', text: 'Um, I basically led the team, you know, and uh it went well.' },
+    { role: 'assistant', kind: 'question', text: 'Q2' },
+    { role: 'user', text: 'asdf' }, { role: 'assistant', kind: 'redirect', text: 'x' },
+  ]
+  const f = countFillerWords(msgs)
+  assert.equal(f.count, 4); assert.ok(f.examples.includes('um'))
+  const r = buildInterviewResult({ readinessRating: 4, metrics: { fluency: 75, grammar: 70, confidence: 150, relevance: 80, vocabulary: 'x' } }, msgs)
+  assert.equal(r.metrics.confidence, 100); assert.equal(r.metrics.vocabulary, undefined)
+  assert.equal(r.overallScore, Math.round((75 + 70 + 100 + 80) / 4))
+  assert.equal(buildInterviewResult({ readinessRating: 3 }, msgs).overallScore, 60)
+}
+console.log('result tests passed')

@@ -115,6 +115,7 @@ export default function Search() {
   }
 
   return (
+    <div className="jo-discover">
     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
       <h1 className="font-heading text-2xl font-semibold mb-1">Search Jobs</h1>
       <p className="font-heading text-lg font-medium mt-3">Jobs Worth Catching Feelings For.</p>
@@ -123,7 +124,7 @@ export default function Search() {
       </p>
 
       <div
-        className="rounded-xl border p-4 mb-6 flex flex-col gap-4"
+        className="jo-outer rounded-xl border p-4 mb-6 flex flex-col gap-4"
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
       >
         <div className="flex flex-col sm:flex-row gap-3">
@@ -220,7 +221,7 @@ export default function Search() {
           <button
             type="button"
             onClick={() => setActiveSources(allSources)}
-            className="text-sm px-3 py-1 rounded-full border transition-colors"
+            className={`text-sm px-3 py-1 rounded-full border transition-colors ${allSelected ? 'jo-chip-on' : 'jo-chip-off'}`}
             style={allSelected ? { backgroundColor: 'var(--color-accent)', color: 'white', borderColor: 'var(--color-accent)' } : borderStyle}
           >
             All
@@ -232,7 +233,7 @@ export default function Search() {
                 type="button"
                 key={key}
                 onClick={() => toggleSource(key)}
-                className="text-sm px-3 py-1 rounded-full border transition-colors"
+                className={`text-sm px-3 py-1 rounded-full border transition-colors ${active ? 'jo-chip-on' : 'jo-chip-off'}`}
                 style={active ? { backgroundColor: 'var(--color-accent)', color: 'white', borderColor: 'var(--color-accent)' } : borderStyle}
               >
                 {SOURCE_LABEL[key]}
@@ -303,6 +304,7 @@ export default function Search() {
           </>
         )
       })()}
+    </div>
     </div>
   )
 }

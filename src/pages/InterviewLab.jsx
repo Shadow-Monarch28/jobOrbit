@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import PillLink from '../components/PillLink'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { statusLabel, STATUS_COLOR } from '../lib/applicationStatus'
@@ -104,8 +104,16 @@ export default function InterviewLab() {
         </h1>
 
         <div
-          className="rounded-xl border p-4 sm:p-5 mt-5 overflow-hidden"
-          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+          className={
+            activeMode === 'mock_interview'
+              ? 'rounded-xl border p-4 sm:p-5 mt-5 overflow-hidden'
+              : 'jo-info mt-6'
+          }
+          style={
+            activeMode === 'mock_interview'
+              ? { borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }
+              : undefined
+          }
         >
           {activeMode === 'mock_interview' && (
             <MockInterviewChat applicationId={selected.id} />
@@ -140,9 +148,7 @@ export default function InterviewLab() {
       {applications.length === 0 && (
         <p className="text-sm text-[var(--color-text-muted)] mt-6">
           Nothing to practise on yet. Upload your resume in{' '}
-          <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
-            Account Details
-          </Link>{' '}
+          <PillLink to="/account#resume">Account Details</PillLink>{' '}
           and apply to a job from Discover to start a mock interview.
         </p>
       )}

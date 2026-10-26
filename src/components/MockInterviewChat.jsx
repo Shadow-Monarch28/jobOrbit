@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { startMockInterview, continueMockInterview } from '../lib/aiCoach'
 import ErrorNotice from './ErrorNotice'
+import InterviewResult from './InterviewResult'
 
 const HINT_KEY = 'jo_mock_hint_dismissed'
 const SYNC_INTERVAL_MS = 4000
@@ -256,57 +257,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
     }
   }
 
-  if (summary) {
-    return (
-      <div className="p-4 sm:p-5">
-        <h3 className="font-heading text-lg font-semibold">Mock Interview — Result</h3>
-
-        {summary.readinessRating != null && (
-          <div className="mt-3 flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1" aria-label={`Interview readiness: ${summary.readinessRating} out of 5`}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span
-                  key={n}
-                  className="text-xl leading-none"
-                  style={{ color: n <= summary.readinessRating ? 'var(--color-accent)' : 'var(--color-border)' }}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
-            <span className="text-sm font-medium">{summary.readinessRating} / 5 interview readiness</span>
-          </div>
-        )}
-        {summary.ratingReason && (
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">{summary.ratingReason}</p>
-        )}
-
-        <p className="text-sm text-[var(--color-text-muted)] mt-3">{summary.overallImpression}</p>
-
-        <div className="mt-4">
-          <h4 className="text-sm font-medium" style={{ color: 'var(--color-success)' }}>
-            Areas of Strength
-          </h4>
-          <ul className="mt-1 flex flex-col gap-1 text-sm">
-            {summary.strengths.map((s, i) => (
-              <li key={i}>• {s}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mt-4">
-          <h4 className="text-sm font-medium" style={{ color: 'var(--color-warning)' }}>
-            Areas of Improvement
-          </h4>
-          <ul className="mt-1 flex flex-col gap-1 text-sm">
-            {summary.improvements.map((s, i) => (
-              <li key={i}>• {s}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    )
-  }
+  if (summary) return <InterviewResult summary={summary} />
 
   // Question numbers, derived from the transcript so they never drift from
   // what is on screen. Only real questions are numbered; doubts and "not an

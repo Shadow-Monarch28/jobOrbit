@@ -5,23 +5,22 @@ import { supabase } from '../lib/supabase'
 import { computeMatchScore, SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
 import { createApplicationIfNeeded } from '../lib/applyToJob'
 import { STATUS_OPTIONS as APPLICATION_STATUSES, STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
+import PillLink from '../components/PillLink'
 import ApplicationCard from '../components/ApplicationCard'
 import OrbitArt from '../components/OrbitArt'
 
-function StatCard({ label, value, sub, onClick, active }) {
+function StatCard({ label, value, sub, onClick, active, tone }) {
   const clickable = typeof onClick === 'function'
   return (
     <button
       onClick={onClick}
       disabled={!clickable}
-      className={`rounded-xl border p-4 text-left ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
-      style={{
-        borderColor: active ? 'var(--color-accent)' : 'var(--color-border)',
-        backgroundColor: 'var(--color-surface)',
-      }}
+      className={`jo-kpi jo-kpi-${tone} rounded-xl p-4 text-left ${active ? 'jo-kpi-active' : ''} ${
+        clickable ? 'cursor-pointer hover:brightness-105' : 'cursor-default'
+      }`}
     >
       <p className="text-xs text-[var(--color-text-muted)]">{label}</p>
-      <p className="text-2xl font-heading font-semibold mt-1">{value}</p>
+      <p className="jo-kpi-value text-2xl font-heading font-semibold mt-1">{value}</p>
       {sub && <p className="text-xs text-[var(--color-text-muted)] mt-1">{sub}</p>}
     </button>
   )
@@ -273,13 +272,15 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
         <StatCard
           label="Saved Jobs"
+          tone="saved"
           value={savedJobs.length}
           onClick={() => toggleView('saved')}
           active={activeView === 'saved'}
         />
-        <StatCard label="Avg Match Score" value={avgScore === null ? 'N/A' : `${avgScore}%`} />
+        <StatCard tone="avg" label="Avg Match Score" value={avgScore === null ? 'N/A' : `${avgScore}%`} />
         <StatCard
           label="Strong Matches"
+          tone="strong"
           value={strongMatches.length}
           sub={`${SHORTLIST_THRESHOLD}%+ match`}
           onClick={() => toggleView('strong')}
@@ -287,6 +288,7 @@ export default function Dashboard() {
         />
         <StatCard
           label="Applications"
+          tone="apps"
           value={applications.length}
           sub={
             statusCounts
@@ -323,9 +325,7 @@ export default function Dashboard() {
           <p className="font-heading text-lg font-medium">Let's Find Your Perfect Fit.</p>
           <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
             No resume, no matchmaking magic. Set a default resume in{' '}
-            <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
-              Resume Dock
-            </Link>{' '}
+            <PillLink to="/account#resume">Resume Dock</PillLink>{' '}
             to see which jobs are giving career chemistry.
           </p>
         </div>

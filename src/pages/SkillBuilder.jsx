@@ -183,10 +183,7 @@ export default function SkillBuilder() {
       </p>
 
       {skills.length === 0 && (
-        <div
-          className="rounded-xl border p-4 mt-6"
-          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-        >
+        <div className="jo-info mt-8">
           <p className="font-heading font-semibold">No skills to conquer. Yet.</p>
           <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
             Run a Resume Review on a Not Selected application in Interview Lab to uncover your hidden

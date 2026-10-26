@@ -46,7 +46,7 @@ export default function MultiSelectInput({ values, onChange, suggestions = [], p
   return (
     <div className="relative flex-1 min-w-0">
       <div
-        className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-lg border bg-transparent min-h-[38px] cursor-text"
+        className="jo-field flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-lg border bg-transparent min-h-[38px] cursor-text"
         style={{ borderColor: 'var(--color-border)' }}
         onClick={() => inputRef.current?.focus()}
       >
@@ -85,7 +85,7 @@ export default function MultiSelectInput({ values, onChange, suggestions = [], p
 
       {open && filteredSuggestions.length > 0 && (
         <div
-          className="absolute z-20 mt-1 w-full rounded-lg border shadow-lg max-h-56 overflow-y-auto"
+          className="jo-dropdown absolute z-20 mt-1 w-full rounded-lg border shadow-lg max-h-56 overflow-y-auto"
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
         >
           {filteredSuggestions.map((s) => (
