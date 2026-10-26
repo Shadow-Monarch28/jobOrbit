@@ -1,19 +1,16 @@
 @import "tailwindcss";
 
-@theme {
+:root {
   --font-heading: "Sora", sans-serif;
   --font-body: "Inter", sans-serif;
-}
-
-:root {
-  --color-bg: #f7f8fa;
+  --color-bg: #f3f5f8;
   --color-surface: #ffffff;
-  --color-surface-alt: #eef0f4;
-  --color-border: #e2e5eb;
+  --color-surface-alt: #e4e8f0;
+  --color-border: #e4e8f0;
   --color-text: #12141a;
   --color-text-muted: #5b606b;
-  --color-accent: #6c5ce7;
-  --color-accent-hover: #8b7cf6;
+  --color-accent: #5b55d9;
+  --color-accent-hover: #7670e6;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
   --color-danger: #f0563d;
@@ -44,6 +41,31 @@ body {
   color: var(--color-text);
   font-family: var(--font-body);
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Form fields must follow the theme, not the browser default (which is black
+   and showed up as dark text on dark cards after a reload or autofill). */
+:root {
+  color-scheme: light;
+}
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+input,
+textarea {
+  color: var(--color-text);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.75;
+}
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  caret-color: var(--color-text);
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  transition: background-color 9999s ease-out 0s;
 }
 
 h1,
@@ -159,10 +181,10 @@ input[type='number'] {
   --jo-u: 1px;
   --jo-grad-a: #fbfbff;
   --jo-grad-b: #eceeff;
-  --jo-ring-1: rgba(108, 92, 231, 0.22);
-  --jo-ring-2: rgba(108, 92, 231, 0.16);
-  --jo-ring-3: rgba(108, 92, 231, 0.11);
-  --jo-dot: #6c5ce7;
+  --jo-ring-1: rgba(91, 85, 217, 0.22);
+  --jo-ring-2: rgba(91, 85, 217, 0.16);
+  --jo-ring-3: rgba(91, 85, 217, 0.11);
+  --jo-dot: #5b55d9;
   --jo-blob-a: rgba(167, 139, 250, 0.38);
   --jo-blob-b: rgba(56, 189, 248, 0.30);
   --jo-blob-c: rgba(244, 114, 182, 0.22);

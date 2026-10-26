@@ -55,10 +55,10 @@ export default function QuestionBankPanel({ job, categorySlug }) {
   return (
     <div>
       <h3 className="font-heading text-lg font-semibold">{category.label} — Question Bank</h3>
-      <p className="text-sm text-[var(--color-text-muted)] mt-1">
-        General prep questions for this type of role, not from any specific employer. Each one has a
-        hint on what a strong answer covers — these are also the style and difficulty of question
-        used in the Mock Interview.
+      <p className="font-medium mt-3">Your Interview Warm-Up Starts Here.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
+        Think of this as your interview gym. Work through role-specific questions, use hints to sharpen
+        your answers, and get comfortable with the challenge before the real spotlight hits.
       </p>
       <ol className="mt-4 flex flex-col gap-3">
         {category.questions.map((q, i) => (

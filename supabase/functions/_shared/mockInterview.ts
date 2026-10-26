@@ -19,9 +19,9 @@
 export const MAX_INTERVIEW_TURNS = 10
 export const MAX_SIDE_TURNS_PER_QUESTION = 4
 export const MAX_ANSWER_CHARS = 4000
+export const LONG_ANSWER_WORDS = 30
 
-export const CLOSING_CLARIFY =
-  "Whenever you're ready, type your answer, or let me know if you have any follow-up questions."
+export const CLOSING_CLARIFY = "All clear? Let's get back to your answer."
 export const CLOSING_REDIRECT =
   'Please type an answer that is correct and reasonable: a few sentences in your own words.'
 
@@ -60,20 +60,32 @@ export function currentQuestionText(messages) {
 
 // finalOnly drops side exchanges (the candidate's off-topic message plus the
 // reply to it) so the end-of-interview rating is based on real answers only.
-export function buildTranscript(messages, { finalOnly = false } = {}) {
+// `compact` keeps prompts small (Groq's free tier meters tokens per minute):
+// older messages are trimmed hard, the latest few stay mostly intact.
+const RECENT_FULL = 6
+const RECENT_CHARS = 700
+const OLD_CHARS = 220
+const clip = (text, n) => (text.length > n ? text.slice(0, n).trimEnd() + '…' : text)
+
+export function buildTranscript(messages, { finalOnly = false, compact = false } = {}) {
   const list = messages || []
   const lines = []
   for (let i = 0; i < list.length; i++) {
     const m = list[i]
+    const isLatest = i === list.length - 1
+    const limit = isLatest ? 4000 : i >= list.length - RECENT_FULL ? RECENT_CHARS : OLD_CHARS
+    const text = compact ? clip(m.text || '', limit) : m.text
     if (m.role === 'assistant') {
       if (isSideReply(m)) {
-        if (!finalOnly) lines.push(`Interviewer (side reply, not a new question): ${m.text}`)
+        if (!finalOnly && !(compact && i < list.length - RECENT_FULL)) {
+          lines.push(`Interviewer (side reply, not a new question): ${text}`)
+        }
       } else {
-        lines.push(`Interviewer: ${m.text}`)
+        lines.push(`Interviewer: ${text}`)
       }
     } else if (m.role === 'user') {
       if (finalOnly && isSideReply(list[i + 1])) continue
-      lines.push(`Candidate: ${m.text}`)
+      lines.push(`Candidate: ${text}`)
     }
   }
   return lines.join('\n')
@@ -212,7 +224,11 @@ export function interpretTurn(parsed, { forceAnswer, isLastQuestion }) {
 export async function runInterviewTurn({ messages, job, callLLM, safeParseJson }) {
   const questionsAsked = countQuestions(messages)
   const isLastQuestion = questionsAsked >= MAX_INTERVIEW_TURNS
-  const forceAnswer = sideTurnsOnCurrentQuestion(messages) >= MAX_SIDE_TURNS_PER_QUESTION
+  const latestText = [...messages].reverse().find((m) => m.role === 'user')?.text || ''
+  // A long, explanatory message is an answer, not a doubt: never let the model
+  // classify it as a clarification and leave the candidate stuck on the question.
+  const longAnswer = wordsOf(latestText).length > LONG_ANSWER_WORDS
+  const forceAnswer = longAnswer || sideTurnsOnCurrentQuestion(messages) >= MAX_SIDE_TURNS_PER_QUESTION
 
   const sideMessage = (kind, reply) => ({
     type: 'side',
@@ -220,7 +236,7 @@ export async function runInterviewTurn({ messages, job, callLLM, safeParseJson }
     reply,
     message: { role: 'assistant', kind, text: reply },
   })
-  const latest = [...messages].reverse().find((m) => m.role === 'user')?.text || ''
+  const latest = latestText
   const currentQ = currentQuestionText(messages)
 
   if (!forceAnswer) {
@@ -231,7 +247,7 @@ export async function runInterviewTurn({ messages, job, callLLM, safeParseJson }
     if (looksLikeDoubt(latest)) {
       try {
         const parsed = safeParseJson(
-          await callLLM(buildClarifyPrompt({ job, transcript: buildTranscript(messages), currentQuestion: currentQ }))
+          await callLLM(buildClarifyPrompt({ job, transcript: buildTranscript(messages, { compact: true }), currentQuestion: currentQ }))
         )
         const reply = typeof parsed?.reply === 'string' ? parsed.reply.trim() : ''
         if (reply) return sideMessage('clarification', `${reply}\n\n${CLOSING_CLARIFY}`)
@@ -243,7 +259,7 @@ export async function runInterviewTurn({ messages, job, callLLM, safeParseJson }
 
   const prompt = buildTurnPrompt({
     job,
-    transcript: buildTranscript(messages),
+    transcript: buildTranscript(messages, { compact: true }),
     currentQuestion: currentQuestionText(messages),
     forceAnswer,
     isLastQuestion,

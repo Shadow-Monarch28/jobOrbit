@@ -3,10 +3,12 @@ import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import Logo from '../components/logo'
+import Avatar, { getDisplayName } from '../components/Avatar'
+import SocialFooter from '../components/SocialFooter'
 
 const CAREER_LINKS = [
   { to: '/search', label: 'Discover' },
-  { to: '/resume', label: 'Career Profile' },
+  { to: '/saved-jobs', label: 'Saved Jobs' },
   { to: '/tracker', label: 'Applications' },
 ]
 
@@ -18,18 +20,9 @@ const PREPARATION_LINKS = [
 const PROFILE_LINKS = [
   { to: '/skill-builder', label: 'Skill Builder' },
   { to: '/tracker', label: 'Applied Jobs' },
-  { to: '/resume#saved-jobs', label: 'Saved Jobs' },
+  { to: '/saved-jobs', label: 'Saved Jobs' },
   { to: '/account', label: 'Account Details' },
 ]
-
-function getDisplayName(user) {
-  const meta = user?.user_metadata || {}
-  return meta.full_name || meta.name || (user?.email ? user.email.split('@')[0] : 'Account')
-}
-
-function getAvatarUrl(user) {
-  return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null
-}
 
 function navLinkClass({ isActive }) {
   return `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -162,8 +155,6 @@ function ProfileMenu({ user, onSignOut, onNavigate }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const displayName = getDisplayName(user)
-  const avatarUrl = getAvatarUrl(user)
-  const initial = displayName.trim()[0]?.toUpperCase() || '?'
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -180,16 +171,7 @@ function ProfileMenu({ user, onSignOut, onNavigate }) {
         className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full border transition-colors hover:bg-[var(--color-surface-alt)]"
         style={{ borderColor: 'var(--color-border)' }}
       >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
-        ) : (
-          <span
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0"
-            style={{ backgroundColor: 'var(--color-accent)' }}
-          >
-            {initial}
-          </span>
-        )}
+        <Avatar user={user} size={28} />
         <span className="text-sm font-medium max-w-[120px] truncate hidden sm:inline">{displayName}</span>
         <ChevronDown className={`text-[var(--color-text-muted)] transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -291,8 +273,6 @@ function MenuGroup({ label, icon, links, open, onToggle, pathname, onClose }) {
 
 function MobileMenu({ user, pathname, onClose, onSignOut }) {
   const displayName = getDisplayName(user)
-  const avatarUrl = getAvatarUrl(user)
-  const initial = displayName.trim()[0]?.toUpperCase() || '?'
   const [openGroup, setOpenGroup] = useState(() =>
     CAREER_LINKS.some((l) => pathname.startsWith(l.to))
       ? 'career'
@@ -343,16 +323,7 @@ function MobileMenu({ user, pathname, onClose, onSignOut }) {
 
       <div className="mt-2 pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
         <div className="flex items-center gap-3 px-3 py-2">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
-          ) : (
-            <span
-              className="w-10 h-10 rounded-full flex items-center justify-center text-base font-semibold text-white shrink-0"
-              style={{ backgroundColor: 'var(--color-accent)' }}
-            >
-              {initial}
-            </span>
-          )}
+          <Avatar user={user} size={40} />
           <div className="min-w-0">
             <p className="font-semibold truncate">{displayName}</p>
             {user?.email && <p className="text-sm text-[var(--color-text-muted)] truncate">{user.email}</p>}
@@ -467,8 +438,11 @@ export default function DashboardLayout() {
         />
       )}
 
-      <main className="flex-1 min-w-0">
-        <Outlet />
+      <main className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1">
+          <Outlet />
+        </div>
+        <SocialFooter className="py-5 px-4" />
       </main>
     </div>
   )

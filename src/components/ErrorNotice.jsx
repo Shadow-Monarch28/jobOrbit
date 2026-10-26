@@ -1,13 +1,43 @@
 import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 
 // Shows a plain "An error occurred" to the user by default, with a toggle
 // to reveal the full technical message (API error text, quota details,
 // etc.) on demand — keeps the UI calm for everyday use while still
 // letting the person see exactly what went wrong if they want to.
-export default function ErrorNotice({ message, onRetry, retryLabel = 'Retry', retryDisabled = false }) {
+export default function ErrorNotice({
+  message,
+  onRetry,
+  retryLabel = 'Retry',
+  retryDisabled = false,
+  userMessage = 'Action Unsuccessful',
+}) {
+  const { isAdmin } = useAuth()
   const [showDetail, setShowDetail] = useState(false)
 
   if (!message) return null
+
+  // Everyone except the admin gets a calm message; the technical detail
+  // (provider errors, quota text, ids) is for the admin account only.
+  if (!isAdmin) {
+    return (
+      <div className="text-center">
+        <p className="text-xs" style={{ color: 'var(--color-danger)' }}>
+          {userMessage}
+        </p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            disabled={retryDisabled}
+            className="text-xs px-3 py-1 rounded-lg border mt-2 disabled:opacity-60"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            {retryLabel}
+          </button>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="text-center">

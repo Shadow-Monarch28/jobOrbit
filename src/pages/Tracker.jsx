@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { moveToNotApplied } from '../lib/applyToJob'
 import { STATUS_OPTIONS } from '../lib/applicationStatus'
 import ApplicationCard from '../components/ApplicationCard'
 
@@ -35,16 +34,6 @@ export default function Tracker() {
   async function handleStatusChange(applicationId, newStatus) {
     setUpdatingId(applicationId)
 
-    if (newStatus === 'not_applied') {
-      const application = applications.find((a) => a.id === applicationId)
-      if (application) {
-        const { error } = await moveToNotApplied({ userId: user.id, application })
-        if (!error) setApplications((prev) => prev.filter((a) => a.id !== applicationId))
-      }
-      setUpdatingId(null)
-      return
-    }
-
     const { error } = await supabase
       .from('applications')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -76,9 +65,9 @@ export default function Tracker() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
-      <h1 className="font-heading text-2xl font-semibold mb-1">Tracker</h1>
+      <h1 className="font-heading text-2xl font-semibold mb-1">Your Applications, Under Control.</h1>
       <p className="text-sm text-[var(--color-text-muted)] mb-6">
-        Every job you've applied to, in one place — change status as things move.
+        One tracker, zero loose ends. Follow every opportunity and update its status as your journey unfolds.
       </p>
 
       <div className="flex items-center gap-2 flex-wrap mb-6">

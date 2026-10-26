@@ -116,9 +116,10 @@ export default function Search() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
-      <h1 className="font-heading text-2xl font-semibold mb-1">Search jobs</h1>
-      <p className="text-sm text-[var(--color-text-muted)] mb-6">
-        Real openings, matched to what you're actually looking for — your next role starts here.
+      <h1 className="font-heading text-2xl font-semibold mb-1">Search Jobs</h1>
+      <p className="font-heading text-lg font-medium mt-3">Jobs Worth Catching Feelings For.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-2 mb-8 leading-relaxed">
+        Explore real opportunities, find your kind of role, and give your career plot a plot twist.
       </p>
 
       <div
@@ -267,19 +268,23 @@ export default function Search() {
       {!loading && jobs.length > 0 && (() => {
         // Jobs you've already applied to move to the Applications view
         // instead of staying in Search results.
-        const visibleJobs = jobs.filter((job) => !applicationStatusMap[`${job.source}:${job.sourceId}`])
+        // A job parked as "Not Applied" still counts as not applied, so it stays visible.
+        const trackedStatus = (job) => {
+          const st = applicationStatusMap[`${job.source}:${job.sourceId}`]
+          return st === 'not_applied' ? undefined : st
+        }
+        const visibleJobs = jobs.filter((job) => !trackedStatus(job))
         return (
           <>
             <p className="text-sm text-[var(--color-text-muted)] mb-3">
               {visibleJobs.length} job{visibleJobs.length === 1 ? '' : 's'} shown
-              {jobs.length !== visibleJobs.length && ` (${jobs.length - visibleJobs.length} already applied, hidden)`}
             </p>
             <div className="grid gap-4">
               {visibleJobs.map((job) => (
                 <JobCard
                   key={job.id}
                   job={job}
-                  applicationStatus={applicationStatusMap[`${job.source}:${job.sourceId}`]}
+                  applicationStatus={trackedStatus(job)}
                   defaultResume={defaultResume}
                   onApplied={handleApplied}
                 />

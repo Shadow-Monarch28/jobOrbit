@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { extractResumeText } from '../lib/resumeParser'
@@ -325,7 +325,9 @@ function DeleteConfirmModal({ resume, onCancel, onConfirm, deleting }) {
   )
 }
 
-export default function Resume() {
+// mode 'resume'  : upload + manage resumes (embedded in Account Details)
+// mode 'saved'   : the Saved Jobs match list (its own page)
+export default function Resume({ mode = 'resume' }) {
   const { user } = useAuth()
   const [resumes, setResumes] = useState([])
   const [loadingList, setLoadingList] = useState(true)
@@ -347,14 +349,14 @@ export default function Resume() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
-  // Lets the nav's "Saved Jobs" link (which points at /resume#saved-jobs)
+  // Lets the nav's "Saved Jobs" link (which points at /account#resume)
   // actually land on that section — React Router doesn't auto-scroll to a
   // hash on navigation the way a full page load would.
   useEffect(() => {
-    if (hash !== '#saved-jobs' || loadingList) return
-    const el = document.getElementById('saved-jobs')
+    if (mode !== 'resume' || hash !== '#resume' || loadingList) return
+    const el = document.getElementById('resume')
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [hash, loadingList])
+  }, [hash, loadingList, mode])
 
   function handleRestoreDeleteConfirm() {
     window.localStorage.removeItem(skipDeleteConfirmKey(user.id))
@@ -552,12 +554,45 @@ export default function Resume() {
     performDelete(pendingDelete)
   }
 
+  if (mode === 'saved') {
+    return (
+      <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
+        <h1 className="font-heading text-2xl font-semibold mb-1">Saved Jobs</h1>
+        <p className="font-heading text-lg font-medium mt-3">Saved the Job. Now Find Your Match.</p>
+        <p className="text-sm text-[var(--color-text-muted)] mt-2 mb-8 leading-relaxed">
+          Your saved opportunities, your skills, your next big move. JobOrbit compares your default
+          resume against saved jobs to show you which roles fit you best.
+        </p>
+        {!loadingList && !defaultResume && (
+          <div
+            className="rounded-xl border p-5 mb-6"
+            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+          >
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+              Your saved jobs are ready to go. Head to{' '}
+              <Link to="/tracker" className="underline" style={{ color: 'var(--color-accent)' }}>
+                Applications
+              </Link>{' '}
+              to review your matches and take the next step toward landing the role.
+            </p>
+            <p className="font-heading font-semibold mt-5">Ready to make your move?</p>
+            <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
+              Explore your saved jobs and start applying to the opportunities that fit you best.
+            </p>
+          </div>
+        )}
+        <SavedJobsMatchSection user={user} defaultResume={defaultResume} />
+      </div>
+    )
+  }
+
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
-      <h1 className="font-heading text-2xl font-semibold mb-1">My Resume</h1>
-      <p className="text-sm text-[var(--color-text-muted)] mb-6">
-        Upload a PDF or DOCX resume — we'll extract its text so it can be matched against job
-        listings. Your default resume is what gets used for match scoring elsewhere in the app.
+    <div id="resume" style={{ scrollMarginTop: '5rem' }}>
+      <h2 className="font-heading text-xl font-semibold">Resume Dock</h2>
+      <p className="font-medium mt-3">Your Resume Does the Talking. We Find the Match.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-2 mb-5 leading-relaxed">
+        Drop in your PDF or DOCX and let JobOrbit uncover the skills hiding in plain sight. Your
+        default resume powers personalized job matches across the app.
       </p>
 
       <div
@@ -636,8 +671,9 @@ export default function Resume() {
       )}
 
       {!loadingList && resumes.length === 0 && (
-        <p className="text-sm text-[var(--color-text-muted)]">
-          No resume uploaded yet — upload one above to get started.
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+          Pro tip: Set your uploaded resume as your default to unlock personalized match scores for your
+          saved jobs.
         </p>
       )}
 
@@ -650,10 +686,6 @@ export default function Resume() {
         />
       )}
 
-      <div id="saved-jobs" style={{ scrollMarginTop: '5rem' }}>
-        <h2 className="font-heading text-xl font-semibold mt-10 mb-3">Saved Jobs Match</h2>
-        <SavedJobsMatchSection user={user} defaultResume={defaultResume} />
-      </div>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { requestResumeReview } from '../lib/aiCoach'
 import { getSkillResources } from '../lib/skillResources'
@@ -25,12 +26,26 @@ export default function ResumeReviewPanel({ applicationId, resumes }) {
 
   return (
     <div>
-      <h3 className="font-heading text-lg font-semibold">Resume Review</h3>
-      <p className="text-sm text-[var(--color-text-muted)] mt-1">
-        See which resume you used for this application and how it compares to the job description.
+      <h3 className="font-heading text-lg font-semibold">Your Resume. Their Expectations. One Clear Picture.</h3>
+      <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
+        See how your resume stacks up against the job description and discover how well your experience
+        aligns with the role.
       </p>
 
-      {!result && (
+      {!result && (resumes || []).length === 0 && (
+        <div className="mt-6">
+          <p className="font-medium">No resume on file yet.</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
+            Upload your resume in{' '}
+            <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
+              Account Details
+            </Link>{' '}
+            to unlock your personalized review and discover your fit for this role.
+          </p>
+        </div>
+      )}
+
+      {!result && (resumes || []).length > 0 && (
         <div className="mt-4 flex flex-col sm:flex-row gap-2">
           <select
             value={resumeId}

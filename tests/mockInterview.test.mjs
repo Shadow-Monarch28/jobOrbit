@@ -124,3 +124,24 @@ for (const a of ['I would ask them what they need first.', 'I led a team of four
   assert.equal(looksLikeNonAnswer(a), false, a); assert.equal(looksLikeDoubt(a), false, a)
 }
 console.log('all mock interview tests passed')
+
+// 14. a long, explanatory message is always an answer, even if the model calls it a doubt
+{
+  const longAnswer = 'First, I worked with the service managers to define the SLA requirements based on case priority, and before the implementation the team relied on manual tracking, so we built a baseline from historical case records and calculated the share of cases that met their targets; afterwards we compared the same reporting periods.'
+  const out = await runInterviewTurn({
+    messages: [{ role: 'assistant', kind: 'question', text: 'How did you measure SLA compliance?' }, { role: 'user', text: longAnswer }],
+    job, callLLM: async (p) => { assert.match(p, /You MUST use intent "answer"/); return JSON.stringify({ intent: 'clarification', reply: 'x', feedback: 'Clear method.', nextQuestion: 'What changed after launch?' }) },
+    safeParseJson: parse,
+  })
+  assert.equal(out.type, 'advance')
+}
+
+// 15. compact transcripts stay small however long the interview gets
+{
+  const big = 'word '.repeat(600)
+  const many = []
+  for (let i = 0; i < 9; i++) many.push({ role: 'assistant', kind: 'question', text: `Q${i}` }, { role: 'user', text: big })
+  const t = buildTranscript(many, { compact: true })
+  assert.ok(t.length < 6000, `compact transcript too large: ${t.length}`)
+}
+console.log('extra tests passed')

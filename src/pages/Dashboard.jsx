@@ -1,8 +1,9 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { computeMatchScore, SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
-import { createApplicationIfNeeded, moveToNotApplied } from '../lib/applyToJob'
+import { createApplicationIfNeeded } from '../lib/applyToJob'
 import { STATUS_OPTIONS as APPLICATION_STATUSES, STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
 import ApplicationCard from '../components/ApplicationCard'
 import OrbitArt from '../components/OrbitArt'
@@ -172,19 +173,6 @@ export default function Dashboard() {
   async function handleStatusChange(applicationId, newStatus) {
     setUpdatingStatusId(applicationId)
 
-    if (newStatus === 'not_applied') {
-      const application = applications.find((a) => a.id === applicationId)
-      if (application) {
-        const { error, savedJob } = await moveToNotApplied({ userId: user.id, application })
-        if (!error) {
-          setApplications((prev) => prev.filter((a) => a.id !== applicationId))
-          if (savedJob) setSavedJobs((prev) => [...prev, savedJob])
-        }
-      }
-      setUpdatingStatusId(null)
-      return
-    }
-
     const { error } = await supabase
       .from('applications')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -274,8 +262,8 @@ export default function Dashboard() {
             {greeting}
             {firstName ? `, ${firstName}` : ''}
           </h1>
-          <p className="text-[var(--color-text-muted)] mt-2 max-w-md">
-            A quick look at your saved jobs, match scores, and applications.
+          <p className="text-[var(--color-text-muted)] mt-3 max-w-md leading-relaxed">
+            Your next big break could be one click away. Check your matches, revisit saved jobs, and keep your applications on track.
           </p>
         </div>
         <OrbitArt size={84} variant="rose" float className="absolute -right-3 top-3 sm:hidden" />
@@ -331,9 +319,16 @@ export default function Dashboard() {
           </div>
         )
       ) : !defaultResume && activeView !== 'saved' ? (
-        <p className="text-sm text-[var(--color-text-muted)]">
-          Set a default resume in My Resume to see match scores here.
-        </p>
+        <div>
+          <p className="font-heading text-lg font-medium">Let's Find Your Perfect Fit.</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
+            No resume, no matchmaking magic. Set a default resume in{' '}
+            <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
+              Resume Dock
+            </Link>{' '}
+            to see which jobs are giving career chemistry.
+          </p>
+        </div>
       ) : current.jobs.length === 0 ? (
         <p className="text-sm text-[var(--color-text-muted)]">
           {activeView === 'saved'

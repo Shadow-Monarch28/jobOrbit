@@ -36,6 +36,8 @@ export function AuthProvider({ children }) {
   const value = {
     session,
     user: session?.user ?? null,
+    // Set server-side only (see supabase/migrations/012_admin_role.sql).
+    isAdmin: session?.user?.app_metadata?.role === 'admin',
     loading,
     signUp: (email, password) => supabase.auth.signUp({ email, password }),
     signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
@@ -56,8 +58,9 @@ export function AuthProvider({ children }) {
     // state here — that is what refreshes the name everywhere (header, Account).
     // A changed email stays pending until the person confirms it from the
     // link Supabase sends to the new address.
-    updateProfile: async ({ name, email }) => {
+    updateProfile: async ({ name, email, avatarUrl }) => {
       const attrs = { data: { full_name: name } }
+      if (avatarUrl !== undefined) attrs.data.avatar_url = avatarUrl
       if (email) attrs.email = email
       const res = await supabase.auth.updateUser(attrs)
       if (!res.error && res.data?.user) {

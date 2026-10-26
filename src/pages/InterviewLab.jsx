@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { statusLabel, STATUS_COLOR } from '../lib/applicationStatus'
@@ -40,7 +41,7 @@ export default function InterviewLab() {
         supabase.from('resumes').select('id, file_name').eq('user_id', user.id),
         supabase
           .from('ai_sessions')
-          .select('application_id')
+          .select('application_id, messages')
           .eq('user_id', user.id)
           .eq('mode', 'mock_interview')
           .eq('status', 'in_progress'),
@@ -50,7 +51,15 @@ export default function InterviewLab() {
       if (resErr) console.error('InterviewLab resumes fetch failed:', resErr)
       setApplications(apps || [])
       setResumes(res || [])
-      setInProgress(new Set((live || []).map((r) => r.application_id)))
+      // "Continue" only when the person has actually answered something;
+      // a session that was opened but never answered still reads "Start".
+      setInProgress(
+        new Set(
+          (live || [])
+            .filter((r) => (r.messages || []).some((m) => m.role === 'user'))
+            .map((r) => r.application_id)
+        )
+      )
       setLoading(false)
     }
     load()
@@ -121,14 +130,20 @@ export default function InterviewLab() {
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold font-heading">Interview Lab</h1>
-      <p className="text-[var(--color-text-muted)] mt-1">
-        Orbit Mentor — your job-specific interview & career preparation partner.
+      <p className="font-heading text-lg font-medium mt-3">Less Panic. More “I've Got This.”</p>
+      <p className="text-[var(--color-text-muted)] mt-2 leading-relaxed">
+        Practice for the real thing with Orbit Mentor — your personal sidekick for interviews and career prep.
       </p>
-      <p className="text-sm text-[var(--color-text-muted)] mt-4">Choose an application to prepare for.</p>
+      <p className="font-medium mt-7">Your next big interview starts here.</p>
+      <p className="text-sm text-[var(--color-text-muted)] mt-1.5">Pick an application to begin.</p>
 
       {applications.length === 0 && (
         <p className="text-sm text-[var(--color-text-muted)] mt-6">
-          You don't have any tracked applications yet. Apply to a job from Discover to get started.
+          Nothing to practise on yet. Upload your resume in{' '}
+          <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
+            Account Details
+          </Link>{' '}
+          and apply to a job from Discover to start a mock interview.
         </p>
       )}
 

@@ -2,6 +2,7 @@ import Logo from '../components/logo'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import OrbitArt from '../components/OrbitArt'
+import SocialFooter from '../components/SocialFooter'
 
 const FEATURES = [
   {
@@ -77,11 +78,11 @@ export default function Landing() {
           <div className="flex flex-col items-center md:items-start gap-5 max-w-xl text-center md:text-left mx-auto md:mx-0">
             <OrbitArt size={150} variant="violet" float className="md:hidden -mb-2" />
             <h1 className="font-heading text-4xl sm:text-5xl font-semibold leading-tight">
-              Find the roles you're actually a fit for
+              Find your fit. Make your move.
             </h1>
             <p className="text-[var(--color-text-muted)] max-w-md">
-              Upload your resume, get matched against real listings, and track every application —
-              plus AI interview prep built for the roles you've applied to.
+              Upload your resume, match with roles that fit, manage every application, and walk into
+              interviews ready with AI-powered prep.
             </p>
             <div className="flex gap-3">
               <Link
@@ -121,8 +122,8 @@ export default function Landing() {
         </div>
       </main>
 
-      <footer className="text-center text-xs text-[var(--color-text-muted)] py-6">
-        JobOrbit — free to use, no paid tiers.
+      <footer className="py-6">
+        <SocialFooter />
       </footer>
     </div>
   )

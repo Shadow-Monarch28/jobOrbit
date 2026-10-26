@@ -4,18 +4,12 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { statusLabel, STATUS_COLOR } from '../lib/applicationStatus'
 import OrbitArt from '../components/OrbitArt'
+import Avatar, { getDisplayName } from '../components/Avatar'
+import AvatarPicker from '../components/AvatarPicker'
+import Resume from './Resume'
 
 const STATUS_ORDER = ['not_applied', 'applied_pending', 'applied', 'under_review', 'shortlisted', 'not_selected']
 const MASTERY_THRESHOLD = 4
-
-function getDisplayName(user) {
-  const meta = user?.user_metadata || {}
-  return meta.full_name || meta.name || (user?.email ? user.email.split('@')[0] : 'Account')
-}
-
-function getAvatarUrl(user) {
-  return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null
-}
 
 function StatTile({ value, label, accent }) {
   return (
@@ -164,6 +158,7 @@ function EditProfileModal({ user, isGoogle, onClose }) {
 export default function Account() {
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
+  const [pickingAvatar, setPickingAvatar] = useState(false)
   const [loading, setLoading] = useState(true)
   const [mockInterviews, setMockInterviews] = useState(0)
   const [skillsBuilt, setSkillsBuilt] = useState(0)
@@ -230,8 +225,6 @@ export default function Account() {
   }
 
   const displayName = getDisplayName(user)
-  const avatarUrl = getAvatarUrl(user)
-  const initial = displayName.trim()[0]?.toUpperCase() || '?'
 
   const memberSince = user?.created_at
     ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
@@ -242,16 +235,21 @@ export default function Account() {
     <div className="min-h-full">
       <div className="p-4 sm:p-8 max-w-4xl mx-auto">
         <div className="relative flex items-center gap-4 pr-0 sm:pr-40 sm:min-h-[100px]">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
-          ) : (
-            <span
-              className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-semibold text-white shrink-0"
-              style={{ background: 'linear-gradient(135deg, #6c5ce7, #38bdf8)' }}
+          <div className="relative group shrink-0">
+            <Avatar user={user} size={56} />
+            <button
+              type="button"
+              onClick={() => setPickingAvatar(true)}
+              aria-label="Change profile picture"
+              title="Change profile picture"
+              className="absolute inset-0 rounded-full flex items-center justify-center text-white bg-black/55 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 [@media(hover:none)]:bg-black/30 transition-opacity"
             >
-              {initial}
-            </span>
-          )}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+            </button>
+          </div>
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-semibold font-heading truncate">Hi, {displayName}</h1>
             <p className="text-sm text-[var(--color-text-muted)]">Your orbit so far</p>
@@ -343,7 +341,15 @@ export default function Account() {
             </Link>
           </section>
         </div>
+
+        <section
+          className="rounded-xl border p-5 mt-4"
+          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+        >
+          <Resume mode="resume" />
+        </section>
       </div>
+      {pickingAvatar && <AvatarPicker onClose={() => setPickingAvatar(false)} />}
       {editing && <EditProfileModal user={user} isGoogle={provider === 'Google'} onClose={() => setEditing(false)} />}
     </div>
   )
