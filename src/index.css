@@ -500,8 +500,7 @@ input[type='number'] {
   --color-border: #344866;
   --color-text: #f1f5f9;
   --color-text-muted: #a7b4c9;
-  background-color: #0f172a;
-  min-height: calc(100vh - 3.5rem);
+  /* no solid page background here, so the normal dark orbit backdrop shows through */
 }
 [data-theme='dark'] .jo-discover .jo-outer {
   border-color: #315078;
