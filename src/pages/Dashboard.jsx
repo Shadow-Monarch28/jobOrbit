@@ -4,9 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { computeMatchScore, SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
 import { createApplicationIfNeeded } from '../lib/applyToJob'
-import { STATUS_OPTIONS as APPLICATION_STATUSES, STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
+import { STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
 import PillLink from '../components/PillLink'
-import ApplicationCard from '../components/ApplicationCard'
 import OrbitArt from '../components/OrbitArt'
 
 function StatCard({ label, value, sub, onClick, active, tone }) {
@@ -117,8 +116,7 @@ export default function Dashboard() {
   const [applications, setApplications] = useState([])
   const [removingId, setRemovingId] = useState(null)
   const [applyingId, setApplyingId] = useState(null)
-  const [updatingStatusId, setUpdatingStatusId] = useState(null)
-  const [activeView, setActiveView] = useState('top') // 'top' | 'saved' | 'strong' | 'applications'
+  const [activeView, setActiveView] = useState('top') // 'top' | 'saved' | 'strong'
 
   useEffect(() => {
     if (!user) return
@@ -169,23 +167,6 @@ export default function Dashboard() {
     setApplyingId(null)
   }
 
-  async function handleStatusChange(applicationId, newStatus) {
-    setUpdatingStatusId(applicationId)
-
-    const { error } = await supabase
-      .from('applications')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', applicationId)
-
-    if (error) {
-      console.error('Status update failed:', error.message)
-    } else {
-      setApplications((prev) => prev.map((a) => (a.id === applicationId ? { ...a, status: newStatus } : a)))
-    }
-
-    setUpdatingStatusId(null)
-  }
-
   function toggleView(view) {
     setActiveView((prev) => (prev === view ? 'top' : view))
   }
@@ -234,16 +215,11 @@ export default function Dashboard() {
     return b.score - a.score
   })
 
-  const statusCounts = APPLICATION_STATUSES.map((s) => ({
-    ...s,
-    count: applications.filter((a) => a.status === s.key).length,
-  }))
 
   const viewConfig = {
     top: { title: 'Top Matches', jobs: topMatches },
     saved: { title: 'All Saved Jobs', jobs: allSavedSorted },
     strong: { title: 'Strong Matches', jobs: strongMatches },
-    applications: { title: 'Applications', jobs: null },
   }
   const current = viewConfig[activeView]
 
@@ -269,7 +245,7 @@ export default function Dashboard() {
         <OrbitArt size={150} variant="rose" float className="absolute -right-2 top-1/2 -translate-y-1/2 hidden sm:block" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-5">
         <StatCard
           label="Saved Jobs"
           tone="saved"
@@ -286,42 +262,11 @@ export default function Dashboard() {
           onClick={() => toggleView('strong')}
           active={activeView === 'strong'}
         />
-        <StatCard
-          label="Applications"
-          tone="apps"
-          value={applications.length}
-          sub={
-            statusCounts
-              .filter((s) => s.count > 0)
-              .map((s) => `${s.label}: ${s.count}`)
-              .join(' · ') || 'None yet'
-          }
-          onClick={() => toggleView('applications')}
-          active={activeView === 'applications'}
-        />
       </div>
 
       <h2 className="font-heading text-xl font-semibold mt-10 mb-3">{current.title}</h2>
 
-      {activeView === 'applications' ? (
-        applications.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-            No career launches yet! Mark a job as applied and let JobOrbit keep your journey to the stars on
-            track.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {applications.map((app) => (
-              <ApplicationCard
-                key={app.id}
-                application={app}
-                onStatusChange={handleStatusChange}
-                updating={updatingStatusId === app.id}
-              />
-            ))}
-          </div>
-        )
-      ) : !defaultResume && activeView === 'top' ? (
+      {!defaultResume && activeView === 'top' ? (
         <div>
           <p className="font-heading text-lg font-medium">Let's Find Your Perfect Fit.</p>
           <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
