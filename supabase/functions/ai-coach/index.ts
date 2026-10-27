@@ -24,6 +24,7 @@ import {
   currentQuestionText,
   buildTranscript,
   runInterviewTurn,
+  buildInterviewResult,
 } from '../_shared/mockInterview.ts'
 
 const CORS_HEADERS = {
@@ -398,6 +399,7 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
 {
   "readinessRating": <integer 1-5, how ready this candidate currently seems for the REAL interview for this role — 1 means significant preparation still needed, 5 means strongly ready. Base this ONLY on the substance of their actual answers in the transcript above, not on politeness or length.>,
   "ratingReason": "<1 sentence explaining specifically why that rating, grounded in the transcript>",
+  "metrics": { "fluency": <integer 0-100>, "grammar": <integer 0-100>, "confidence": <integer 0-100>, "relevance": <integer 0-100, how well answers address the questions>, "vocabulary": <integer 0-100> },
   "strengths": [<2-4 short strings, specific things the candidate did well, grounded in what they actually said>],
   "improvements": [<2-4 short strings, specific areas to work on, grounded in what they actually said>],
   "overallImpression": "<2-3 sentence honest summary>"
@@ -405,14 +407,7 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
 
     const raw = await callLLM(summaryPrompt, { asJson: true })
     const parsed = safeParseJson(raw)
-    const result = {
-      readinessRating:
-        typeof parsed.readinessRating === 'number' ? Math.max(1, Math.min(5, Math.round(parsed.readinessRating))) : null,
-      ratingReason: typeof parsed.ratingReason === 'string' ? parsed.ratingReason : '',
-      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
-      improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
-      overallImpression: typeof parsed.overallImpression === 'string' ? parsed.overallImpression : '',
-    }
+    const result = buildInterviewResult(parsed, messages)
 
     const { error: updateErr } = await supabase
       .from('ai_sessions')

@@ -3,7 +3,7 @@ import { SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
 
 // Shared by Dashboard's Applications view and the Tracker page, so both
 // always show the same card and status options.
-export default function ApplicationCard({ application, onStatusChange, updating }) {
+export default function ApplicationCard({ application, onStatusChange, updating, selection }) {
   const job = application.job_data
   const color = STATUS_COLOR[application.status] ?? 'var(--color-text-muted)'
 
@@ -12,6 +12,16 @@ export default function ApplicationCard({ application, onStatusChange, updating 
       className="rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-3"
       style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
     >
+      {selection && (
+        <input
+          type="checkbox"
+          checked={selection.checked}
+          onChange={selection.onToggle}
+          aria-label={`Select ${job.title}`}
+          className="w-4 h-4 shrink-0 cursor-pointer"
+          style={{ accentColor: 'var(--color-accent)' }}
+        />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium truncate">{job.title}</p>

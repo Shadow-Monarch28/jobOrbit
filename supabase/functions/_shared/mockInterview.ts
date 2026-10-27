@@ -278,3 +278,57 @@ export async function runInterviewTurn({ messages, job, callLLM, safeParseJson }
   if (isLastQuestion) return { type: 'finish', feedback: decision.feedback }
   return { type: 'advance', feedback: decision.feedback, question: decision.question }
 }
+
+// Filler words are counted from the candidate's own words, not guessed by the
+// model. Only real answers count (side exchanges are skipped).
+const FILLER_WORDS_RE = /\b(um+|uh+|uhm|erm|er|hmm+|you know|i mean|kind of|sort of|basically|literally|actually)\b/gi
+
+export function countFillerWords(messages) {
+  const list = messages || []
+  const found = {}
+  let count = 0
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i]
+    if (m.role !== 'user' || isSideReply(list[i + 1])) continue
+    for (const hit of (m.text || '').match(FILLER_WORDS_RE) || []) {
+      const w = hit.toLowerCase()
+      found[w] = (found[w] || 0) + 1
+      count++
+    }
+  }
+  const examples = Object.entries(found)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([w]) => w)
+  return { count, examples }
+}
+
+const clampPct = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : null)
+
+// Turns the model's summary JSON into the stored result.
+export function buildInterviewResult(parsed, messages) {
+  const p = parsed || {}
+  const metrics = {}
+  for (const k of ['fluency', 'grammar', 'confidence', 'relevance', 'vocabulary']) {
+    const v = clampPct(p.metrics?.[k])
+    if (v != null) metrics[k] = v
+  }
+  const vals = Object.values(metrics)
+  const rating =
+    typeof p.readinessRating === 'number' ? Math.max(1, Math.min(5, Math.round(p.readinessRating))) : null
+  const overallScore = vals.length
+    ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+    : rating != null
+      ? rating * 20
+      : null
+  return {
+    readinessRating: rating,
+    ratingReason: typeof p.ratingReason === 'string' ? p.ratingReason : '',
+    strengths: Array.isArray(p.strengths) ? p.strengths : [],
+    improvements: Array.isArray(p.improvements) ? p.improvements : [],
+    overallImpression: typeof p.overallImpression === 'string' ? p.overallImpression : '',
+    metrics: vals.length ? metrics : null,
+    overallScore,
+    fillerWords: countFillerWords(messages),
+  }
+}

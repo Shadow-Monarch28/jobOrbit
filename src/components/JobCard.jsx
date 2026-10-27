@@ -82,7 +82,7 @@ function JobCard({ job, applicationStatus, defaultResume, onApplied }) {
   return (
     <div
       onClick={handleOpenDetail}
-      className="rounded-xl border p-5 flex flex-col gap-3 cursor-pointer hover:brightness-110"
+      className="jo-outer rounded-xl border p-5 flex flex-col gap-3 cursor-pointer hover:brightness-110"
       style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
     >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">

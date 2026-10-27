@@ -4,24 +4,22 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { computeMatchScore, SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
 import { createApplicationIfNeeded } from '../lib/applyToJob'
-import { STATUS_OPTIONS as APPLICATION_STATUSES, STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
-import ApplicationCard from '../components/ApplicationCard'
+import { STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
+import PillLink from '../components/PillLink'
 import OrbitArt from '../components/OrbitArt'
 
-function StatCard({ label, value, sub, onClick, active }) {
+function StatCard({ label, value, sub, onClick, active, tone }) {
   const clickable = typeof onClick === 'function'
   return (
     <button
       onClick={onClick}
       disabled={!clickable}
-      className={`rounded-xl border p-4 text-left ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
-      style={{
-        borderColor: active ? 'var(--color-accent)' : 'var(--color-border)',
-        backgroundColor: 'var(--color-surface)',
-      }}
+      className={`jo-kpi jo-kpi-${tone} rounded-xl p-4 text-left ${active ? 'jo-kpi-active' : ''} ${
+        clickable ? 'cursor-pointer hover:brightness-105' : 'cursor-default'
+      }`}
     >
       <p className="text-xs text-[var(--color-text-muted)]">{label}</p>
-      <p className="text-2xl font-heading font-semibold mt-1">{value}</p>
+      <p className="jo-kpi-value text-2xl font-heading font-semibold mt-1">{value}</p>
       {sub && <p className="text-xs text-[var(--color-text-muted)] mt-1">{sub}</p>}
     </button>
   )
@@ -118,8 +116,7 @@ export default function Dashboard() {
   const [applications, setApplications] = useState([])
   const [removingId, setRemovingId] = useState(null)
   const [applyingId, setApplyingId] = useState(null)
-  const [updatingStatusId, setUpdatingStatusId] = useState(null)
-  const [activeView, setActiveView] = useState('top') // 'top' | 'saved' | 'strong' | 'applications'
+  const [activeView, setActiveView] = useState('top') // 'top' | 'saved' | 'strong'
 
   useEffect(() => {
     if (!user) return
@@ -170,23 +167,6 @@ export default function Dashboard() {
     setApplyingId(null)
   }
 
-  async function handleStatusChange(applicationId, newStatus) {
-    setUpdatingStatusId(applicationId)
-
-    const { error } = await supabase
-      .from('applications')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', applicationId)
-
-    if (error) {
-      console.error('Status update failed:', error.message)
-    } else {
-      setApplications((prev) => prev.map((a) => (a.id === applicationId ? { ...a, status: newStatus } : a)))
-    }
-
-    setUpdatingStatusId(null)
-  }
-
   function toggleView(view) {
     setActiveView((prev) => (prev === view ? 'top' : view))
   }
@@ -235,16 +215,11 @@ export default function Dashboard() {
     return b.score - a.score
   })
 
-  const statusCounts = APPLICATION_STATUSES.map((s) => ({
-    ...s,
-    count: applications.filter((a) => a.status === s.key).length,
-  }))
 
   const viewConfig = {
     top: { title: 'Top Matches', jobs: topMatches },
     saved: { title: 'All Saved Jobs', jobs: allSavedSorted },
     strong: { title: 'Strong Matches', jobs: strongMatches },
-    applications: { title: 'Applications', jobs: null },
   }
   const current = viewConfig[activeView]
 
@@ -270,70 +245,43 @@ export default function Dashboard() {
         <OrbitArt size={150} variant="rose" float className="absolute -right-2 top-1/2 -translate-y-1/2 hidden sm:block" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-5">
         <StatCard
           label="Saved Jobs"
+          tone="saved"
           value={savedJobs.length}
           onClick={() => toggleView('saved')}
           active={activeView === 'saved'}
         />
-        <StatCard label="Avg Match Score" value={avgScore === null ? 'N/A' : `${avgScore}%`} />
+        <StatCard tone="avg" label="Avg Match Score" value={avgScore === null ? 'N/A' : `${avgScore}%`} />
         <StatCard
           label="Strong Matches"
+          tone="strong"
           value={strongMatches.length}
           sub={`${SHORTLIST_THRESHOLD}%+ match`}
           onClick={() => toggleView('strong')}
           active={activeView === 'strong'}
         />
-        <StatCard
-          label="Applications"
-          value={applications.length}
-          sub={
-            statusCounts
-              .filter((s) => s.count > 0)
-              .map((s) => `${s.label}: ${s.count}`)
-              .join(' · ') || 'None yet'
-          }
-          onClick={() => toggleView('applications')}
-          active={activeView === 'applications'}
-        />
       </div>
 
       <h2 className="font-heading text-xl font-semibold mt-10 mb-3">{current.title}</h2>
 
-      {activeView === 'applications' ? (
-        applications.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">
-            No applications yet — mark a job as applied to start tracking it here.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {applications.map((app) => (
-              <ApplicationCard
-                key={app.id}
-                application={app}
-                onStatusChange={handleStatusChange}
-                updating={updatingStatusId === app.id}
-              />
-            ))}
-          </div>
-        )
-      ) : !defaultResume && activeView !== 'saved' ? (
+      {!defaultResume && activeView === 'top' ? (
         <div>
           <p className="font-heading text-lg font-medium">Let's Find Your Perfect Fit.</p>
           <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
             No resume, no matchmaking magic. Set a default resume in{' '}
-            <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
-              Resume Dock
-            </Link>{' '}
+            <PillLink to="/account#resume">Resume Dock</PillLink>{' '}
             to see which jobs are giving career chemistry.
           </p>
         </div>
       ) : current.jobs.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
           {activeView === 'saved'
             ? 'No saved jobs yet — save some from Search Jobs.'
-            : 'No scored saved jobs yet — save some jobs from Search Jobs to see your best matches.'}
+            : activeView === 'strong'
+              ? 'No stars aligned just yet! Save jobs from Search Jobs and let JobOrbit guide you to your next career constellation.'
+              : 'No scored saved jobs yet — save some jobs from Search Jobs to see your best matches.'}
         </p>
       ) : (
         <div className="flex flex-col gap-3">

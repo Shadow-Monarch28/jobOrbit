@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
-:root {
+@theme {
   --font-heading: "Sora", sans-serif;
   --font-body: "Inter", sans-serif;
+}
+
+:root {
   --color-bg: #f3f5f8;
   --color-surface: #ffffff;
   --color-surface-alt: #e4e8f0;
@@ -450,4 +453,83 @@ input[type='number'] {
 @keyframes jo-twinkle {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.45; transform: scale(0.8); }
+}
+
+
+/* ---- KPI cards (Dashboard) --------------------------------------------- */
+.jo-kpi {
+  background-color: var(--kpi-bg);
+  border: 1px solid var(--kpi-border);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.jo-kpi .jo-kpi-value {
+  color: var(--kpi-accent);
+}
+.jo-kpi-active {
+  border-color: var(--kpi-accent);
+  box-shadow: 0 0 0 1px var(--kpi-accent);
+}
+.jo-kpi-saved { --kpi-bg: #e9f6fe; --kpi-border: #b5def5; --kpi-accent: #0b86c4; }
+.jo-kpi-avg { --kpi-bg: #f1edfd; --kpi-border: #d3c8f4; --kpi-accent: #7c4fe0; }
+.jo-kpi-strong { --kpi-bg: #e6f7f4; --kpi-border: #b2e3da; --kpi-accent: #0f9488; }
+.jo-kpi-apps { --kpi-bg: #fbeefa; --kpi-border: #efc6ea; --kpi-accent: #c026d3; }
+[data-theme='dark'] .jo-kpi-saved { --kpi-bg: #14283d; --kpi-border: #285580; --kpi-accent: #38bdf8; }
+[data-theme='dark'] .jo-kpi-avg { --kpi-bg: #211b3d; --kpi-border: #51408a; --kpi-accent: #a78bfa; }
+[data-theme='dark'] .jo-kpi-strong { --kpi-bg: #102c2b; --kpi-border: #236b60; --kpi-accent: #2dd4bf; }
+[data-theme='dark'] .jo-kpi-apps { --kpi-bg: #30202f; --kpi-border: #71405e; --kpi-accent: #e879f9; }
+
+/* ---- Informational sections: no card, text sits straight on the page ---- */
+.jo-info {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+.jo-support {
+  color: var(--color-text-muted);
+}
+[data-theme='dark'] .jo-support {
+  color: #a7b4c9;
+}
+
+/* ---- Discover page palette (dark theme only) ----------------------------- */
+[data-theme='dark'] .jo-discover {
+  --color-bg: #0f172a;
+  --color-surface: #131f33;
+  --color-surface-alt: #17243a;
+  --color-border: #344866;
+  --color-text: #f1f5f9;
+  --color-text-muted: #a7b4c9;
+  background-color: #0f172a;
+  min-height: calc(100vh - 3.5rem);
+}
+[data-theme='dark'] .jo-discover .jo-outer {
+  border-color: #315078;
+}
+[data-theme='dark'] .jo-discover input:not([type='checkbox']),
+[data-theme='dark'] .jo-discover select,
+[data-theme='dark'] .jo-discover .jo-field {
+  background-color: #0f192a;
+}
+[data-theme='dark'] .jo-discover select option,
+[data-theme='dark'] .jo-discover .jo-dropdown {
+  background-color: #17243a;
+}
+[data-theme='dark'] .jo-discover input:focus,
+[data-theme='dark'] .jo-discover select:focus,
+[data-theme='dark'] .jo-discover .jo-field:focus-within {
+  border-color: #8b7cff;
+  outline: none;
+}
+[data-theme='dark'] .jo-discover .jo-field input {
+  background-color: transparent;
+}
+[data-theme='dark'] .jo-discover .jo-chip-on {
+  background-color: #7055f5;
+  border-color: #7055f5;
+  color: #fff;
+}
+[data-theme='dark'] .jo-discover .jo-chip-off {
+  background-color: #28234a;
+  border-color: #6250b7;
 }

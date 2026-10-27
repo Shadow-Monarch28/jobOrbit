@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import PillLink from './PillLink'
 import { useState } from 'react'
 import { requestResumeReview } from '../lib/aiCoach'
 import { getSkillResources } from '../lib/skillResources'
@@ -35,11 +35,9 @@ export default function ResumeReviewPanel({ applicationId, resumes }) {
       {!result && (resumes || []).length === 0 && (
         <div className="mt-6">
           <p className="font-medium">No resume on file yet.</p>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
+          <p className="text-sm jo-support mt-2 leading-relaxed">
             Upload your resume in{' '}
-            <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>
-              Account Details
-            </Link>{' '}
+            <PillLink to="/account#resume">Account Details</PillLink>{' '}
             to unlock your personalized review and discover your fit for this role.
           </p>
         </div>

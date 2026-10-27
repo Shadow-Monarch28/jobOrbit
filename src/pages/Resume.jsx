@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import PillLink from '../components/PillLink'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { extractResumeText } from '../lib/resumeParser'
@@ -564,19 +565,12 @@ export default function Resume({ mode = 'resume' }) {
           resume against saved jobs to show you which roles fit you best.
         </p>
         {!loadingList && !defaultResume && (
-          <div
-            className="rounded-xl border p-5 mb-6"
-            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
-          >
-            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-              Your saved jobs are ready to go. Head to{' '}
-              <Link to="/tracker" className="underline" style={{ color: 'var(--color-accent)' }}>
-                Applications
-              </Link>{' '}
-              to review your matches and take the next step toward landing the role.
+          <div className="jo-info mb-8">
+            <p className="text-sm jo-support leading-relaxed">
+              Your saved jobs are ready to go. Head to <PillLink to="/tracker">Applications</PillLink> to review your matches and take the next step toward landing the role.
             </p>
             <p className="font-heading font-semibold mt-5">Ready to make your move?</p>
-            <p className="text-sm text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
+            <p className="text-sm jo-support mt-1.5 leading-relaxed">
               Explore your saved jobs and start applying to the opportunities that fit you best.
             </p>
           </div>
