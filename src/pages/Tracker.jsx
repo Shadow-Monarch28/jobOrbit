@@ -11,8 +11,6 @@ const skipRemoveKey = (userId) => `skipRemoveJobsConfirm:${userId}`
 // Same look and behaviour as the "Delete resume?" dialog.
 function RemoveJobsModal({ jobs, removing, onCancel, onConfirm }) {
   const [dontAskAgain, setDontAskAgain] = useState(false)
-  const names = jobs.slice(0, 3).map((a) => a.job_data?.title).filter(Boolean)
-  const more = jobs.length - names.length
 
   return (
     <div
@@ -33,9 +31,8 @@ function RemoveJobsModal({ jobs, removing, onCancel, onConfirm }) {
           className="text-sm text-[var(--color-text-muted)] mb-4"
           style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
         >
-          {names.map((n) => `"${n}"`).join(', ')}
-          {more > 0 ? ` and ${more} more` : ''} will be permanently removed from your list. This can't be
-          undone.
+          {jobs.length === 1 ? '1 job' : `${jobs.length} jobs`} will be permanently removed from your list. This
+          can't be undone.
         </p>
 
         <label className="flex items-center gap-2 text-sm cursor-pointer mb-5">
