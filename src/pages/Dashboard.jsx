@@ -305,8 +305,9 @@ export default function Dashboard() {
 
       {activeView === 'applications' ? (
         applications.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">
-            No applications yet — mark a job as applied to start tracking it here.
+          <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+            No career launches yet! Mark a job as applied and let JobOrbit keep your journey to the stars on
+            track.
           </p>
         ) : (
           <div className="flex flex-col gap-3">
@@ -320,7 +321,7 @@ export default function Dashboard() {
             ))}
           </div>
         )
-      ) : !defaultResume && activeView !== 'saved' ? (
+      ) : !defaultResume && activeView === 'top' ? (
         <div>
           <p className="font-heading text-lg font-medium">Let's Find Your Perfect Fit.</p>
           <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
@@ -330,10 +331,12 @@ export default function Dashboard() {
           </p>
         </div>
       ) : current.jobs.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
           {activeView === 'saved'
             ? 'No saved jobs yet — save some from Search Jobs.'
-            : 'No scored saved jobs yet — save some jobs from Search Jobs to see your best matches.'}
+            : activeView === 'strong'
+              ? 'No stars aligned just yet! Save jobs from Search Jobs and let JobOrbit guide you to your next career constellation.'
+              : 'No scored saved jobs yet — save some jobs from Search Jobs to see your best matches.'}
         </p>
       ) : (
         <div className="flex flex-col gap-3">

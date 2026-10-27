@@ -5,7 +5,8 @@ import { getDisplayName, getAvatarUrl } from './Avatar'
 
 const PRESETS = Array.from({ length: 19 }, (_, i) => `/avatars/avatar-${String(i + 1).padStart(2, '0')}.jpg`)
 
-const BOX = 300 // px, the area the photo is shown in while cropping
+const MAX_SIDE = 1400 // px, phone photos are shrunk to this before cropping
+const boxSize = () => Math.max(220, Math.min(300, (typeof window !== 'undefined' ? window.innerWidth : 360) - 96))
 
 // Shows the chosen photo with a movable, resizable circular frame. Drag the
 // frame to move it, drag the corner dot to resize it. Reports the frame in
@@ -18,6 +19,7 @@ function CropStep({ src, busy, onCancel, onConfirm }) {
 
   function onLoad() {
     const img = imgRef.current
+    const BOX = boxSize()
     const k = Math.min(BOX / img.naturalWidth, BOX / img.naturalHeight)
     const dw = img.naturalWidth * k
     const dh = img.naturalHeight * k
@@ -69,7 +71,7 @@ function CropStep({ src, busy, onCancel, onConfirm }) {
       </p>
       <div
         className="relative mx-auto mt-4 select-none"
-        style={{ width: disp?.w ?? BOX, height: disp?.h ?? BOX, touchAction: 'none' }}
+        style={{ width: disp?.w ?? 220, height: disp?.h ?? 220, touchAction: 'none' }}
       >
         <img
           ref={imgRef}
@@ -77,8 +79,8 @@ function CropStep({ src, busy, onCancel, onConfirm }) {
           alt=""
           onLoad={onLoad}
           draggable={false}
-          className="block w-full h-full"
-          style={{ width: disp?.w, height: disp?.h, maxWidth: BOX, maxHeight: BOX }}
+          className="block"
+          style={{ width: disp?.w, height: disp?.h }}
         />
         {frame && (
           <div
@@ -136,6 +138,30 @@ function CropStep({ src, busy, onCancel, onConfirm }) {
   )
 }
 
+// Decodes the picked file and redraws it (max MAX_SIDE px) as a JPEG object URL.
+async function shrinkImage(file) {
+  const src = URL.createObjectURL(file)
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () => reject(new Error('decode'))
+      el.src = src
+    })
+    const k = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.naturalWidth * k)
+    canvas.height = Math.round(img.naturalHeight * k)
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('encode'))), 'image/jpeg', 0.92)
+    )
+    return URL.createObjectURL(blob)
+  } finally {
+    URL.revokeObjectURL(src)
+  }
+}
+
 function cropToBlob({ x, y, s, img }, size = 256) {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
@@ -162,14 +188,27 @@ export default function AvatarPicker({ onClose }) {
     else onClose()
   }
 
-  function handleFile(e) {
+  // Phone cameras make big photos (sometimes with an empty MIME type). The file
+  // is read into a smaller JPEG first, which also keeps memory use low.
+  async function handleFile(e) {
     const file = e.target.files?.[0]
-    e.target.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) return setError('Please choose an image file.')
-    if (file.size > 10 * 1024 * 1024) return setError('Please choose an image under 10 MB.')
+    const looksLikeImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|heif|avif|bmp)$/i.test(file.name || '')
+    if (!looksLikeImage) {
+      e.target.value = ''
+      return setError('Please choose an image file.')
+    }
     setError('')
-    setCropSrc(URL.createObjectURL(file))
+    setBusy(true)
+    try {
+      const url = await shrinkImage(file)
+      setCropSrc(url)
+    } catch {
+      setError("We couldn't read that photo. Try a JPG or PNG.")
+    } finally {
+      setBusy(false)
+      e.target.value = ''
+    }
   }
 
   function cancelCrop() {

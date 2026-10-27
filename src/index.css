@@ -492,41 +492,6 @@ input[type='number'] {
   color: #a7b4c9;
 }
 
-/* Inline link pill with an arrow */
-.jo-pill-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.1rem 0.6rem;
-  border-radius: 0.5rem;
-  border: 1px solid #cdc8f3;
-  background-color: #eeecfd;
-  color: #5b55d9;
-  font-weight: 500;
-  text-decoration: none;
-  vertical-align: middle;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-.jo-pill-link:hover {
-  background-color: #e2dffb;
-  color: #4640b8;
-}
-[data-theme='dark'] .jo-pill-link {
-  border-color: #5945b8;
-  background-color: #251d4d;
-  color: #a78bfa;
-}
-[data-theme='dark'] .jo-pill-link:hover {
-  background-color: #342568;
-  color: #c4b5fd;
-}
-.jo-pill-link svg {
-  color: currentColor;
-}
-[data-theme='dark'] .jo-pill-link svg {
-  color: #a78bfa;
-}
-
 /* ---- Discover page palette (dark theme only) ----------------------------- */
 [data-theme='dark'] .jo-discover {
   --color-bg: #0f172a;

@@ -566,7 +566,7 @@ export default function Resume({ mode = 'resume' }) {
         </p>
         {!loadingList && !defaultResume && (
           <div className="jo-info mb-8">
-            <p className="text-sm jo-support leading-loose">
+            <p className="text-sm jo-support leading-relaxed">
               Your saved jobs are ready to go. Head to <PillLink to="/tracker">Applications</PillLink> to review your matches and take the next step toward landing the role.
             </p>
             <p className="font-heading font-semibold mt-5">Ready to make your move?</p>

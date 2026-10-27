@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import OrbitFlow from '../components/OrbitFlow'
 
 const STEPS = [
   {
@@ -61,10 +62,9 @@ export default function HowItWorks() {
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl sm:text-3xl font-semibold font-heading">How it Works</h1>
       <p className="font-heading text-xl font-medium mt-3">One Orbit. Every Step Counts.</p>
-      <p className="font-medium mt-3" style={{ color: 'var(--color-accent)' }}>
-        Upload. Discover. Apply. Review. Improve. Grow.
-      </p>
-      <p className="text-[var(--color-text-muted)] mt-5 leading-relaxed">
+      <OrbitFlow />
+
+      <p className="text-[var(--color-text-muted)] mt-8 leading-relaxed">
         Six connected stages turn your career goals into actionable steps. Your resume powers your
         matches, your reviews reveal opportunities to improve, and your progress comes to life through
         personalized insights.
