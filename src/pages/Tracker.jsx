@@ -6,6 +6,66 @@ import ApplicationCard from '../components/ApplicationCard'
 
 const FILTER_OPTIONS = [{ key: 'all', label: 'All' }, ...STATUS_OPTIONS]
 
+const skipRemoveKey = (userId) => `skipRemoveJobsConfirm:${userId}`
+
+// Same look and behaviour as the "Delete resume?" dialog.
+function RemoveJobsModal({ jobs, removing, onCancel, onConfirm }) {
+  const [dontAskAgain, setDontAskAgain] = useState(false)
+  const names = jobs.slice(0, 3).map((a) => a.job_data?.title).filter(Boolean)
+  const more = jobs.length - names.length
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !removing) onCancel()
+      }}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl border p-5"
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)', minWidth: 0 }}
+      >
+        <h2 className="font-heading font-semibold mb-2">
+          {jobs.length === 1 ? 'Remove job?' : `Remove ${jobs.length} jobs?`}
+        </h2>
+        <p
+          className="text-sm text-[var(--color-text-muted)] mb-4"
+          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+        >
+          {names.map((n) => `"${n}"`).join(', ')}
+          {more > 0 ? ` and ${more} more` : ''} will be permanently removed from your list. This can't be
+          undone.
+        </p>
+
+        <label className="flex items-center gap-2 text-sm cursor-pointer mb-5">
+          <input type="checkbox" checked={dontAskAgain} onChange={(e) => setDontAskAgain(e.target.checked)} />
+          Don't ask me again
+        </label>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            disabled={removing}
+            className="px-4 py-2 rounded-lg border text-sm disabled:opacity-60"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(dontAskAgain)}
+            disabled={removing}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60"
+            style={{ backgroundColor: 'var(--color-danger)' }}
+          >
+            {removing ? 'Removing...' : 'Remove'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Tracker() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -14,9 +74,12 @@ export default function Tracker() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [selected, setSelected] = useState(() => new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [confirmingRemove, setConfirmingRemove] = useState(false)
+  const [skipConfirm, setSkipConfirm] = useState(false)
 
   useEffect(() => {
     if (!user) return
+    setSkipConfirm(window.localStorage.getItem(skipRemoveKey(user.id)) === 'true')
     fetchApplications()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
@@ -79,16 +142,35 @@ export default function Tracker() {
     setBulkBusy(false)
   }
 
-  async function removeSelected() {
+  // Asks first (same dialog style as deleting a resume) unless turned off.
+  function requestRemove() {
+    if (!selected.size) return
+    if (skipConfirm) performRemove()
+    else setConfirmingRemove(true)
+  }
+
+  async function performRemove() {
     const ids = [...selected]
-    if (!ids.length) return
-    if (!window.confirm(`Remove ${ids.length} job${ids.length === 1 ? '' : 's'} from your list?`)) return
     setBulkBusy(true)
     const { error } = await supabase.from('applications').delete().in('id', ids).eq('user_id', user.id)
     if (error) console.error('Bulk delete failed:', error.message)
     else setApplications((prev) => prev.filter((a) => !selected.has(a.id)))
     setSelected(new Set())
     setBulkBusy(false)
+    setConfirmingRemove(false)
+  }
+
+  function handleConfirmRemove(dontAskAgain) {
+    if (dontAskAgain) {
+      window.localStorage.setItem(skipRemoveKey(user.id), 'true')
+      setSkipConfirm(true)
+    }
+    performRemove()
+  }
+
+  function restoreConfirm() {
+    window.localStorage.removeItem(skipRemoveKey(user.id))
+    setSkipConfirm(false)
   }
 
   if (loading) {
@@ -162,7 +244,7 @@ export default function Tracker() {
                 Mark selected as applied
               </button>
               <button
-                onClick={removeSelected}
+                onClick={requestRemove}
                 disabled={!selected.size || bulkBusy}
                 className="px-3 py-1.5 rounded-lg border disabled:opacity-50"
                 style={{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }}
@@ -170,6 +252,14 @@ export default function Tracker() {
                 Remove selected
               </button>
               <span className="text-[var(--color-text-muted)]">{selected.size} selected</span>
+            </div>
+          )}
+          {statusFilter === 'not_applied' && skipConfirm && (
+            <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-3">
+              <span>Remove confirmations are turned off for your account.</span>
+              <button onClick={restoreConfirm} className="underline hover:text-[var(--color-text)]">
+                Restore default (ask before removing)
+              </button>
             </div>
           )}
           <div className="flex flex-col gap-3">
@@ -188,6 +278,15 @@ export default function Tracker() {
             ))}
           </div>
         </>
+      )}
+
+      {confirmingRemove && (
+        <RemoveJobsModal
+          jobs={applications.filter((a) => selected.has(a.id))}
+          removing={bulkBusy}
+          onCancel={() => setConfirmingRemove(false)}
+          onConfirm={handleConfirmRemove}
+        />
       )}
     </div>
   )
