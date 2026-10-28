@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { computeMatchScore } from '../lib/matchingEngine'
 import { useJobSearch } from '../hooks/useJobSearch'
 import JobCard from '../components/JobCard'
 import MultiSelectInput from '../components/MultiSelectInput'
@@ -49,6 +50,7 @@ export default function Search() {
   const { user } = useAuth()
   const [applicationStatusMap, setApplicationStatusMap] = useState({})
   const [defaultResume, setDefaultResume] = useState(null)
+  const [matchResumeOnly, setMatchResumeOnly] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -195,7 +197,33 @@ export default function Search() {
               {DATE_POSTED_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </FilterField>
-          <div />
+          <FilterField label="Match my resume">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={matchResumeOnly}
+              disabled={!defaultResume}
+              onClick={() => setMatchResumeOnly((v) => !v)}
+              className="flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title={defaultResume ? 'Show only jobs matching your resume by more than 60%' : 'Upload a resume in Account Details first'}
+            >
+              <span
+                className="relative inline-block w-10 h-6 rounded-full border transition-colors shrink-0"
+                style={{
+                  backgroundColor: matchResumeOnly ? 'var(--color-accent)' : 'var(--color-surface-alt)',
+                  borderColor: matchResumeOnly ? 'var(--color-accent)' : 'var(--color-border)',
+                }}
+              >
+                <span
+                  className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                  style={{ transform: matchResumeOnly ? 'translateX(16px)' : 'translateX(0)' }}
+                />
+              </span>
+              <span className="text-[var(--color-text-muted)]">
+                {defaultResume ? (matchResumeOnly ? 'Over 60% match' : 'Off') : 'No resume yet'}
+              </span>
+            </button>
+          </FilterField>
         </div>
 
         {(salaryMinInput || salaryMaxInput) && (
@@ -274,7 +302,12 @@ export default function Search() {
           const st = applicationStatusMap[`${job.source}:${job.sourceId}`]
           return st === 'not_applied' ? undefined : st
         }
-        const visibleJobs = jobs.filter((job) => !trackedStatus(job))
+        const matchesResume = (job) => {
+          if (!matchResumeOnly || !defaultResume) return true
+          const { score } = computeMatchScore(defaultResume.parsed_skills ?? [], job)
+          return score !== null && score > 60
+        }
+        const visibleJobs = jobs.filter((job) => !trackedStatus(job) && matchesResume(job))
         return (
           <>
             <p className="text-sm text-[var(--color-text-muted)] mb-3">

@@ -26,6 +26,7 @@ import {
   runInterviewTurn,
   buildInterviewResult,
 } from '../_shared/mockInterview.ts'
+import { evaluateSkillAnswer } from '../_shared/skillBuilder.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -502,26 +503,13 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
   const exerciseMessage = session.messages?.[0]
   const exercise = exerciseMessage?.text || ''
 
-  const evalPrompt = `You are a practical skills coach evaluating a learner's attempt at a practice exercise for the skill "${session.skill_name}".
-
-EXERCISE GIVEN:
-${exercise}
-
-LEARNER'S ANSWER:
-${userAnswer.trim()}
-
-Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
-{
-  "readyRating": <integer 1-5, how solid their understanding of this skill now appears from this one answer — 1 means still a real gap, 5 means solid grasp. Base this ONLY on the substance of their answer, not length or confidence.>,
-  "feedback": "<2-3 sentences of specific, honest feedback on their answer — what was right, what was missing or wrong>"
-}`
-
-  const raw = await callLLM(evalPrompt, { asJson: true })
-  const parsed = safeParseJson(raw)
-  const result = {
-    readyRating: typeof parsed.readyRating === 'number' ? Math.max(1, Math.min(5, Math.round(parsed.readyRating))) : null,
-    feedback: typeof parsed.feedback === 'string' ? parsed.feedback : '',
-  }
+  const result = await evaluateSkillAnswer({
+    skillName: session.skill_name,
+    exercise,
+    answer: userAnswer.trim(),
+    callLLM,
+    safeParseJson,
+  })
 
   const updatedMessages = [...session.messages, { role: 'user', text: userAnswer.trim() }]
 
