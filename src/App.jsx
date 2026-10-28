@@ -21,6 +21,8 @@ import CareerInsights from './pages/CareerInsights'
 import HowItWorks from './pages/HowItWorks'
 import Account from './pages/Account'
 
+if (typeof document !== 'undefined') document.title = 'JobOrbit'
+
 export default function App() {
   return (
     <ThemeProvider>

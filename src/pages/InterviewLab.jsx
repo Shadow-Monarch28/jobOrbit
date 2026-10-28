@@ -149,7 +149,7 @@ export default function InterviewLab() {
         <p className="text-sm text-[var(--color-text-muted)] mt-6">
           Nothing to practise on yet. Upload your resume in{' '}
           <PillLink to="/account#resume">Account Details</PillLink>{' '}
-          and apply to a job from Discover to start a mock interview.
+          and apply to a job from <PillLink to="/search">Discover</PillLink> to start a mock interview.
         </p>
       )}
 
