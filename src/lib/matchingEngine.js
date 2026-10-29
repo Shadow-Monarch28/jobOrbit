@@ -11,15 +11,18 @@ export const SHORTLIST_THRESHOLD = 70
  * "R" doesn't match inside "Marketing", etc. This is deterministic keyword
  * matching, not an ML/AI model — genuinely computed, not a black box.
  */
+const escapeRe = (skill) => skill.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const buildPattern = (skill) => new RegExp(`(^|[^a-z0-9+#])${escapeRe(skill)}([^a-z0-9+#]|$)`, 'i')
+// Compiled once: the default vocabulary is large and is scanned for every job.
+const DEFAULT_PATTERNS = SKILL_SUGGESTIONS.map((skill) => ({ skill, re: buildPattern(skill) }))
+
 export function extractSkillsFromText(text, vocabulary = SKILL_SUGGESTIONS) {
   if (!text) return []
   const lower = text.toLowerCase()
-
-  return vocabulary.filter((skill) => {
-    const escaped = skill.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const pattern = new RegExp(`(^|[^a-z0-9+#])${escaped}([^a-z0-9+#]|$)`, 'i')
-    return pattern.test(lower)
-  })
+  const patterns = vocabulary === SKILL_SUGGESTIONS
+    ? DEFAULT_PATTERNS
+    : vocabulary.map((skill) => ({ skill, re: buildPattern(skill) }))
+  return patterns.filter(({ re }) => re.test(lower)).map(({ skill }) => skill)
 }
 
 /**
@@ -27,7 +30,20 @@ export function extractSkillsFromText(text, vocabulary = SKILL_SUGGESTIONS) {
  * combining its own tags (when they're recognized skill names) with skills
  * extracted from its description text.
  */
+const jobSkillsCache = new Map()
+
 export function getJobRequiredSkills(job) {
+  const cacheKey = job.id ? `${job.id}|${(job.description ?? '').length}` : null
+  if (cacheKey && jobSkillsCache.has(cacheKey)) return jobSkillsCache.get(cacheKey)
+  const skills = computeJobRequiredSkills(job)
+  if (cacheKey) {
+    if (jobSkillsCache.size > 3000) jobSkillsCache.clear()
+    jobSkillsCache.set(cacheKey, skills)
+  }
+  return skills
+}
+
+function computeJobRequiredSkills(job) {
   const fromTags = (job.tags ?? []).filter((tag) =>
     SKILL_SUGGESTIONS.some((s) => s.toLowerCase() === tag.toLowerCase())
   )

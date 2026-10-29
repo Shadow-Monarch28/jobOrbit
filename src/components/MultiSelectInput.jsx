@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 
-const MAX_SUGGESTIONS = 8
+const MAX_SUGGESTIONS = 400
 
 export default function MultiSelectInput({ values, onChange, suggestions = [], placeholder }) {
   const [inputText, setInputText] = useState('')

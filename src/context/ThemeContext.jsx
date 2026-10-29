@@ -9,6 +9,16 @@ function getInitialTheme() {
   return prefersDark ? 'dark' : 'light'
 }
 
+// Part of the day, from the viewer's own clock. Drives the planet colours and
+// the background tint through the data-tod attribute (see index.css).
+export function getTimeOfDay(date = new Date()) {
+  const h = date.getHours()
+  if (h >= 5 && h < 11) return 'morning'
+  if (h >= 11 && h < 17) return 'afternoon'
+  if (h >= 17 && h < 20) return 'evening'
+  return 'night'
+}
+
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(getInitialTheme)
 
@@ -16,6 +26,13 @@ export function ThemeProvider({ children }) {
     document.documentElement.setAttribute('data-theme', theme)
     window.localStorage.setItem('jobsearch-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    const apply = () => document.documentElement.setAttribute('data-tod', getTimeOfDay())
+    apply()
+    const id = window.setInterval(apply, 60 * 1000)
+    return () => window.clearInterval(id)
+  }, [])
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
 

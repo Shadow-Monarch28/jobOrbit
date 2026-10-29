@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { STATUS_COLOR, statusLabel } from '../lib/applicationStatus'
 import { computeMatchScore } from '../lib/matchingEngine'
+import { SOURCE_LABEL } from '../lib/jobSources/sourceMeta'
 
 const WORKPLACE_LABEL = {
   remote: 'Remote',
@@ -12,12 +13,6 @@ const WORKPLACE_LABEL = {
   unspecified: 'Location unspecified',
 }
 
-const SOURCE_LABEL = {
-  adzuna: 'Adzuna',
-  lever: 'Lever',
-  remoteok: 'RemoteOK',
-  arbeitnow: 'Arbeitnow',
-}
 
 function timeAgo(iso) {
   if (!iso) return null
