@@ -27,7 +27,7 @@ export default function OrbitArt({ size = 160, className = '', float = false, va
   return (
     <div
       aria-hidden="true"
-      className={`${/\b(absolute|fixed)\b/.test(className) ? '' : 'relative'} shrink-0 ${float ? 'jo-planet-float' : ''} ${className}`}
+      className={`jo-orbit-art ${/\b(absolute|fixed)\b/.test(className) ? '' : 'relative'} shrink-0 ${float ? 'jo-planet-float' : ''} ${className}`}
       style={{ width: size, height: size }}
     >
       <span

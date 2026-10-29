@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { searchAllJobs } from '../lib/jobSources'
 import { searchAdzuna } from '../lib/jobSources/adzuna'
+import { ALL_SOURCE_KEYS, API_SOURCE_KEYS } from '../lib/jobSources/sourceMeta'
+import { INDUSTRY_OPTIONS, categorizeJob } from '../lib/data/jobCatalog'
 
-const ALL_SOURCES = ['adzuna', 'lever', 'remoteok', 'arbeitnow']
+const ALL_SOURCES = ALL_SOURCE_KEYS
 const PAGE_SIZE = 20
 const DAY_MS = 1000 * 60 * 60 * 24
 
@@ -25,7 +27,29 @@ function matchesAny(haystack, chips) {
   return chips.some((c) => text.includes(c.toLowerCase()))
 }
 
-export function useJobSearch() {
+// jobPredicate: optional extra filter (applied before paging, so "Show more"
+// always reveals the next real matches rather than hidden ones).
+const LOCATION_ALIASES = {
+  'united states': ['usa', 'us', 'u.s.', 'united states of america'],
+  'united kingdom': ['uk', 'u.k.', 'great britain', 'england', 'scotland', 'wales'],
+  'united arab emirates': ['uae', 'dubai', 'abu dhabi'],
+  'south korea': ['korea'],
+  'czech republic': ['czechia'],
+}
+
+function matchesLocation(text, chips) {
+  if (chips.length === 0) return true
+  const hay = text.toLowerCase()
+  return chips.some((chip) => {
+    const c = chip.toLowerCase()
+    if (hay.includes(c)) return true
+    return (LOCATION_ALIASES[c] ?? []).some((alias) =>
+      alias.length <= 3 ? new RegExp(`(^|[^a-z])${alias.replace('.', '\\.')}([^a-z]|$)`).test(hay) : hay.includes(alias)
+    )
+  })
+}
+
+export function useJobSearch({ jobPredicate } = {}) {
   const [titleChips, setTitleChips] = useState([])
   const [locationChips, setLocationChips] = useState([])
   const [skillChips, setSkillChips] = useState([])
@@ -49,6 +73,9 @@ export function useJobSearch() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
+  // Link-only sources (Foundit etc.) never fetch, so toggling them must not re-run the search.
+  const apiSourcesKey = activeSources.filter((k) => API_SOURCE_KEYS.includes(k)).sort().join(',')
+
   const runSearch = useCallback(async () => {
     setLoading(true)
     setHasSearched(true)
@@ -59,19 +86,19 @@ export function useJobSearch() {
       titles: titleChips.length > 0 ? titleChips : [''],
       where: locationChips[0] ?? '',
       page: 1,
-      sources: activeSources,
+      sources: activeSources.filter((k) => API_SOURCE_KEYS.includes(k)),
     })
 
     setJobs(results)
     setErrors(searchErrors)
     setLoading(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [titleChips, locationChips, activeSources])
+  }, [titleChips, locationChips, apiSourcesKey])
 
   useEffect(() => {
     runSearch()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [titleChips, locationChips, activeSources])
+  }, [titleChips, locationChips, apiSourcesKey])
 
   const loadMoreAdzuna = useCallback(async () => {
     if (!activeSources.includes('adzuna')) return
@@ -116,7 +143,7 @@ export function useJobSearch() {
   // against each job's own location/country field is what actually fixes that.
   let filteredJobs = jobs.filter((job) => {
     if (!matchesAny(job.title, titleChips)) return false
-    if (!matchesAny(`${job.location} ${job.country ?? ''}`, locationChips)) return false
+    if (!matchesLocation(`${job.location} ${job.country ?? ''}`, locationChips)) return false
     if (skillChips.length > 0) {
       const haystack = [job.title, job.description, ...job.tags].join(' ')
       if (!matchesAny(haystack, skillChips)) return false
@@ -125,7 +152,11 @@ export function useJobSearch() {
     if (workplaceFilter !== 'any' && job.workplace !== workplaceFilter) return false
     if (jobTypeFilter !== 'any' && job.jobType !== jobTypeFilter) return false
     if (experienceFilter !== 'any' && job.experienceLevel !== experienceFilter) return false
-    if (industryFilter && (job.industry ?? '').toLowerCase() !== industryFilter.toLowerCase()) return false
+    if (industryFilter) {
+      const wanted = industryFilter.toLowerCase()
+      const inCategory = (categorizeJob(job) ?? '').toLowerCase() === wanted
+      if (!inCategory && (job.industry ?? '').toLowerCase() !== wanted) return false
+    }
 
     if (hasSalaryRange) {
       const hasSalaryData = job.salaryMin != null || job.salaryMax != null
@@ -141,6 +172,8 @@ export function useJobSearch() {
       const days = { '24h': 1, '7d': 7, '30d': 30 }[datePostedFilter]
       if (new Date(job.postedAt).getTime() < Date.now() - days * DAY_MS) return false
     }
+
+    if (jobPredicate && !jobPredicate(job)) return false
 
     return true
   })
@@ -167,7 +200,7 @@ export function useJobSearch() {
   }
 
   const visibleJobs = filteredJobs.slice(0, visibleCount)
-  const availableIndustries = [...new Set(jobs.map((j) => j.industry).filter(Boolean))].sort()
+  const availableIndustries = INDUSTRY_OPTIONS
 
   return {
     titleChips,
@@ -209,6 +242,7 @@ export function useJobSearch() {
     clearFilters,
     loadMoreAdzuna,
     canLoadMore: activeSources.includes('adzuna'),
+    linkSources: activeSources.filter((k) => !API_SOURCE_KEYS.includes(k)),
     canShowMoreLocally: visibleCount < filteredJobs.length,
     showMoreLocally: () => setVisibleCount((c) => c + PAGE_SIZE),
   }

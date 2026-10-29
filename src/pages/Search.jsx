@@ -3,13 +3,15 @@ import { computeMatchScore } from '../lib/matchingEngine'
 import { useJobSearch } from '../hooks/useJobSearch'
 import JobCard from '../components/JobCard'
 import MultiSelectInput from '../components/MultiSelectInput'
+import HelpTip from '../components/HelpTip'
+import SourceDropdown from '../components/SourceDropdown'
+import { SOURCE_LABEL, API_SOURCE_KEYS, buildSourceLink } from '../lib/jobSources/sourceMeta'
 import { JOB_TITLE_SUGGESTIONS } from '../lib/data/jobTitles'
 import { LOCATION_SUGGESTIONS } from '../lib/data/locations'
 import { SKILL_SUGGESTIONS } from '../lib/data/skills'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
-const SOURCE_LABEL = { adzuna: 'Adzuna', lever: 'Lever', remoteok: 'RemoteOK', arbeitnow: 'Arbeitnow' }
 
 const WORKPLACE_OPTIONS = [
   { value: 'any', label: 'Any' }, { value: 'remote', label: 'Remote' },
@@ -33,6 +35,8 @@ const DATE_POSTED_OPTIONS = [
   { value: 'any', label: 'Any time' }, { value: '24h', label: 'Past 24 hours' },
   { value: '7d', label: 'Past week' }, { value: '30d', label: 'Past month' },
 ]
+
+const MATCH_MIN = 60
 
 function FilterField({ label, children }) {
   return (
@@ -79,6 +83,21 @@ export default function Search() {
     setApplicationStatusMap((prev) => ({ ...prev, [key]: status }))
   }
 
+  // Applied inside the hook, before paging, so "Show more" always reveals the
+  // next real matches. Jobs already applied to stay out; "Not Applied" ones stay in.
+  const trackedStatus = (job) => {
+    const st = applicationStatusMap[`${job.source}:${job.sourceId}`]
+    return st === 'not_applied' ? undefined : st
+  }
+  const jobPredicate = (job) => {
+    if (trackedStatus(job)) return false
+    if (matchResumeOnly && defaultResume) {
+      const { score } = computeMatchScore(defaultResume.parsed_skills ?? [], job)
+      if (score === null || score <= MATCH_MIN) return false
+    }
+    return true
+  }
+
   const {
     titleChips, setTitleChips,
     locationChips, setLocationChips,
@@ -96,7 +115,6 @@ export default function Search() {
     allSources,
     availableIndustries,
     jobs,
-    totalMatching,
     errors,
     loading,
     loadingMore,
@@ -107,14 +125,10 @@ export default function Search() {
     canLoadMore,
     canShowMoreLocally,
     showMoreLocally,
-  } = useJobSearch()
+    linkSources,
+  } = useJobSearch({ jobPredicate })
 
-  const allSelected = activeSources.length === allSources.length
   const borderStyle = { borderColor: 'var(--color-border)' }
-
-  function toggleSource(source) {
-    setActiveSources((prev) => (prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]))
-  }
 
   return (
     <div className="jo-discover">
@@ -198,31 +212,39 @@ export default function Search() {
             </select>
           </FilterField>
           <FilterField label="Match my resume">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={matchResumeOnly}
-              disabled={!defaultResume}
-              onClick={() => setMatchResumeOnly((v) => !v)}
-              className="flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              title={defaultResume ? 'Show only jobs matching your resume by more than 60%' : 'Upload a resume in Account Details first'}
-            >
-              <span
-                className="relative inline-block w-10 h-6 rounded-full border transition-colors shrink-0"
-                style={{
-                  backgroundColor: matchResumeOnly ? 'var(--color-accent)' : 'var(--color-surface-alt)',
-                  borderColor: matchResumeOnly ? 'var(--color-accent)' : 'var(--color-border)',
-                }}
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={matchResumeOnly}
+                disabled={!defaultResume}
+                onClick={() => setMatchResumeOnly((v) => !v)}
+                className="flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span
-                  className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
-                  style={{ transform: matchResumeOnly ? 'translateX(16px)' : 'translateX(0)' }}
-                />
-              </span>
-              <span className="text-[var(--color-text-muted)]">
-                {defaultResume ? (matchResumeOnly ? 'Over 60% match' : 'Off') : 'No resume yet'}
-              </span>
-            </button>
+                  className="relative inline-block w-10 h-6 rounded-full border transition-colors shrink-0"
+                  style={{
+                    backgroundColor: matchResumeOnly ? 'var(--color-accent)' : 'var(--color-surface-alt)',
+                    borderColor: matchResumeOnly ? 'var(--color-accent)' : 'var(--color-border)',
+                  }}
+                >
+                  <span
+                    className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                    style={{ transform: matchResumeOnly ? 'translateX(16px)' : 'translateX(0)' }}
+                  />
+                </span>
+                <span className="text-[var(--color-text-muted)] whitespace-nowrap">
+                  {matchResumeOnly && defaultResume ? 'Orbit Scanning' : 'Orbit Idle'}
+                </span>
+              </button>
+              <HelpTip
+                text={
+                  defaultResume
+                    ? 'Orbit Scanning shows only jobs that match your resume by more than 60%.'
+                    : 'Shows only jobs matching your resume by more than 60%. Upload a resume in Account Details to turn it on.'
+                }
+              />
+            </div>
           </FilterField>
         </div>
 
@@ -246,29 +268,28 @@ export default function Search() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-[var(--color-text-muted)] w-28 shrink-0">Sources</span>
-          <button
-            type="button"
-            onClick={() => setActiveSources(allSources)}
-            className={`text-sm px-3 py-1 rounded-full border transition-colors ${allSelected ? 'jo-chip-on' : 'jo-chip-off'}`}
-            style={allSelected ? { backgroundColor: 'var(--color-accent)', color: 'white', borderColor: 'var(--color-accent)' } : borderStyle}
-          >
-            All
-          </button>
-          {allSources.map((key) => {
-            const active = activeSources.includes(key)
-            return (
-              <button
-                type="button"
-                key={key}
-                onClick={() => toggleSource(key)}
-                className={`text-sm px-3 py-1 rounded-full border transition-colors ${active ? 'jo-chip-on' : 'jo-chip-off'}`}
-                style={active ? { backgroundColor: 'var(--color-accent)', color: 'white', borderColor: 'var(--color-accent)' } : borderStyle}
-              >
-                {SOURCE_LABEL[key]}
-              </button>
-            )
-          })}
+          <SourceDropdown selected={activeSources} onChange={setActiveSources} />
         </div>
+
+        {linkSources.length > 0 && (
+          <div className="text-sm text-[var(--color-text-muted)] flex items-center gap-2 flex-wrap">
+            <span>
+              {linkSources.map((k) => SOURCE_LABEL[k]).join(', ')} {linkSources.length === 1 ? "doesn't" : "don't"} share a public job feed, so open {linkSources.length === 1 ? 'it' : 'them'} with your search:
+            </span>
+            {linkSources.map((k) => (
+              <a
+                key={k}
+                href={buildSourceLink(k, { title: titleChips[0] ?? '', country: locationChips[0] ?? '' })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+                style={{ color: 'var(--color-accent)' }}
+              >
+                {SOURCE_LABEL[k]} ↗
+              </a>
+            ))}
+          </div>
+        )}
 
       </div>
 
@@ -288,31 +309,26 @@ export default function Search() {
         </div>
       )}
 
-      {!loading && hasSearched && jobs.length === 0 && (
+      {!loading && hasSearched && jobs.length === 0 && !matchResumeOnly && (
         <div className="text-center py-16 text-[var(--color-text-muted)]">
           No jobs matched your filters. Try loosening the salary range, job type, or date-posted filter, or enable more sources.
         </div>
       )}
 
-      {!loading && jobs.length > 0 && (() => {
-        // Jobs you've already applied to move to the Applications view
-        // instead of staying in Search results.
-        // A job parked as "Not Applied" still counts as not applied, so it stays visible.
-        const trackedStatus = (job) => {
-          const st = applicationStatusMap[`${job.source}:${job.sourceId}`]
-          return st === 'not_applied' ? undefined : st
-        }
-        const matchesResume = (job) => {
-          if (!matchResumeOnly || !defaultResume) return true
-          const { score } = computeMatchScore(defaultResume.parsed_skills ?? [], job)
-          return score !== null && score > 60
-        }
-        const visibleJobs = jobs.filter((job) => !trackedStatus(job) && matchesResume(job))
+      {!loading && (jobs.length > 0 || (matchResumeOnly && hasSearched)) && (() => {
+        const visibleJobs = jobs
         return (
           <>
             <p className="text-sm text-[var(--color-text-muted)] mb-3">
               {visibleJobs.length} job{visibleJobs.length === 1 ? '' : 's'} shown
             </p>
+            {visibleJobs.length === 0 && (
+              <div className="text-center py-10 text-[var(--color-text-muted)] text-sm">
+                {activeSources.some((k) => API_SOURCE_KEYS.includes(k))
+                  ? 'No jobs over 60% match in what has loaded so far. Try loading more or widening your filters.'
+                  : 'The selected sources open on their own sites. Use the links above, or pick another source to see results here.'}
+              </div>
+            )}
             <div className="grid gap-4">
               {visibleJobs.map((job) => (
                 <JobCard

@@ -210,6 +210,62 @@ input[type='number'] {
   --jo-mist-c: #2b1330;
 }
 
+/* ---- Time of day --------------------------------------------------------
+   <html data-tod="morning|afternoon|evening|night"> is set from the viewer's
+   clock (ThemeContext). It slightly tints the background blobs and gradient
+   and shifts the planets' colour, in both light and dark mode. */
+:root[data-tod='morning'] {
+  --jo-grad-a: #fffaf1; --jo-grad-b: #fdeedd;
+  --jo-blob-a: rgba(251, 191, 36, 0.30); --jo-blob-b: rgba(251, 146, 60, 0.20); --jo-blob-c: rgba(244, 114, 182, 0.20);
+  --jo-mist-a: #fef3c7; --jo-mist-b: #ffedd5; --jo-mist-c: #fce7f3;
+}
+:root[data-tod='afternoon'] {
+  --jo-grad-a: #f7fbff; --jo-grad-b: #e4f1ff;
+  --jo-blob-a: rgba(56, 189, 248, 0.34); --jo-blob-b: rgba(99, 102, 241, 0.22); --jo-blob-c: rgba(45, 212, 191, 0.20);
+  --jo-mist-a: #e0f2fe; --jo-mist-b: #e0e7ff; --jo-mist-c: #ccfbf1;
+}
+:root[data-tod='evening'] {
+  --jo-grad-a: #fff7fb; --jo-grad-b: #f5e6fb;
+  --jo-blob-a: rgba(244, 114, 182, 0.30); --jo-blob-b: rgba(251, 146, 60, 0.22); --jo-blob-c: rgba(167, 139, 250, 0.30);
+  --jo-mist-a: #ffe4e6; --jo-mist-b: #f3e8ff; --jo-mist-c: #ffedd5;
+}
+:root[data-tod='night'] {
+  --jo-grad-a: #f3f4fc; --jo-grad-b: #dfe3f6;
+  --jo-blob-a: rgba(99, 102, 241, 0.30); --jo-blob-b: rgba(56, 120, 200, 0.24); --jo-blob-c: rgba(139, 92, 246, 0.24);
+  --jo-mist-a: #e0e7ff; --jo-mist-b: #e9e4fb; --jo-mist-c: #dbeafe;
+}
+[data-theme='dark'][data-tod='morning'] {
+  --jo-grad-a: #181320; --jo-grad-b: #28192a;
+  --jo-blob-a: rgba(217, 119, 6, 0.30); --jo-blob-b: rgba(190, 80, 40, 0.26); --jo-blob-c: rgba(190, 50, 110, 0.24);
+  --jo-mist-a: #2e2010; --jo-mist-b: #2d1a22; --jo-mist-c: #2b1330;
+}
+[data-theme='dark'][data-tod='afternoon'] {
+  --jo-grad-a: #0d1424; --jo-grad-b: #12213d;
+  --jo-blob-a: rgba(14, 116, 190, 0.34); --jo-blob-b: rgba(20, 120, 130, 0.30); --jo-blob-c: rgba(79, 70, 229, 0.24);
+  --jo-mist-a: #0c2538; --jo-mist-b: #14203d; --jo-mist-c: #0f2a2e;
+}
+[data-theme='dark'][data-tod='evening'] {
+  --jo-grad-a: #191024; --jo-grad-b: #2c1334;
+  --jo-blob-a: rgba(157, 23, 100, 0.34); --jo-blob-b: rgba(194, 65, 12, 0.24); --jo-blob-c: rgba(109, 40, 217, 0.30);
+  --jo-mist-a: #2b1330; --jo-mist-b: #1d1637; --jo-mist-c: #301a20;
+}
+[data-theme='dark'][data-tod='night'] {
+  --jo-grad-a: #080b17; --jo-grad-b: #0e1431;
+  --jo-blob-a: rgba(67, 56, 202, 0.34); --jo-blob-b: rgba(30, 64, 175, 0.30); --jo-blob-c: rgba(91, 33, 182, 0.26);
+  --jo-mist-a: #0a1226; --jo-mist-b: #151236; --jo-mist-c: #1a1038;
+}
+
+/* planets (with their ring, moon and star) shift colour through the day */
+.jo-orbit-art {
+  --jo-p-hue: 0deg; --jo-p-sat: 1; --jo-p-bri: 1;
+  filter: hue-rotate(var(--jo-p-hue)) saturate(var(--jo-p-sat)) brightness(var(--jo-p-bri));
+  transition: filter 1.5s ease;
+}
+:root[data-tod='morning'] .jo-orbit-art { --jo-p-hue: -22deg; --jo-p-sat: 1.1; --jo-p-bri: 1.08; }
+:root[data-tod='afternoon'] .jo-orbit-art { --jo-p-hue: 0deg; --jo-p-sat: 1.18; --jo-p-bri: 1.02; }
+:root[data-tod='evening'] .jo-orbit-art { --jo-p-hue: 32deg; --jo-p-sat: 1.15; --jo-p-bri: 0.96; }
+:root[data-tod='night'] .jo-orbit-art { --jo-p-hue: -38deg; --jo-p-sat: 0.9; --jo-p-bri: 0.82; }
+
 @media (max-width: 1023px) {
   :root { --jo-u: 0.78px; }
 }
