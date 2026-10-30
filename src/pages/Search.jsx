@@ -5,7 +5,7 @@ import JobCard from '../components/JobCard'
 import MultiSelectInput from '../components/MultiSelectInput'
 import HelpTip from '../components/HelpTip'
 import SourceDropdown from '../components/SourceDropdown'
-import { SOURCE_LABEL, API_SOURCE_KEYS, buildSourceLink } from '../lib/jobSources/sourceMeta'
+import { SOURCE_LABEL } from '../lib/jobSources/sourceMeta'
 import { JOB_TITLE_SUGGESTIONS } from '../lib/data/jobTitles'
 import { LOCATION_SUGGESTIONS } from '../lib/data/locations'
 import { SKILL_SUGGESTIONS } from '../lib/data/skills'
@@ -125,7 +125,6 @@ export default function Search() {
     canLoadMore,
     canShowMoreLocally,
     showMoreLocally,
-    linkSources,
   } = useJobSearch({ jobPredicate })
 
   const borderStyle = { borderColor: 'var(--color-border)' }
@@ -268,29 +267,8 @@ export default function Search() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-[var(--color-text-muted)] w-28 shrink-0">Sources</span>
-          <SourceDropdown selected={activeSources} onChange={setActiveSources} />
+          <SourceDropdown selected={activeSources} onChange={setActiveSources} title={titleChips[0] ?? ''} country={locationChips[0] ?? ''} />
         </div>
-
-        {linkSources.length > 0 && (
-          <div className="text-sm text-[var(--color-text-muted)] flex items-center gap-2 flex-wrap">
-            <span>
-              {linkSources.map((k) => SOURCE_LABEL[k]).join(', ')} {linkSources.length === 1 ? "doesn't" : "don't"} share a public job feed, so open {linkSources.length === 1 ? 'it' : 'them'} with your search:
-            </span>
-            {linkSources.map((k) => (
-              <a
-                key={k}
-                href={buildSourceLink(k, { title: titleChips[0] ?? '', country: locationChips[0] ?? '' })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-                style={{ color: 'var(--color-accent)' }}
-              >
-                {SOURCE_LABEL[k]} ↗
-              </a>
-            ))}
-          </div>
-        )}
-
       </div>
 
       {errors.length > 0 && (
@@ -324,9 +302,7 @@ export default function Search() {
             </p>
             {visibleJobs.length === 0 && (
               <div className="text-center py-10 text-[var(--color-text-muted)] text-sm">
-                {activeSources.some((k) => API_SOURCE_KEYS.includes(k))
-                  ? 'No jobs over 60% match in what has loaded so far. Try loading more or widening your filters.'
-                  : 'The selected sources open on their own sites. Use the links above, or pick another source to see results here.'}
+                No jobs over 60% match in what has loaded so far. Try loading more or widening your filters.
               </div>
             )}
             <div className="grid gap-4">

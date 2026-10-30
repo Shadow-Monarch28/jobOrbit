@@ -588,6 +588,10 @@ export default function Resume({ mode = 'resume' }) {
         Drop in your PDF or DOCX and let JobOrbit uncover the skills hiding in plain sight. Your
         default resume powers personalized job matches across the app.
       </p>
+      <p className="text-sm text-[var(--color-text-muted)] -mt-3 mb-5 leading-relaxed">
+        Starting from scratch? Head to <PillLink to="/resume-builder">Resume Builder</PillLink> to craft a
+        resume that makes recruiters stop scrolling, score it against any saved job, and make it your default.
+      </p>
 
       <div
         className="rounded-xl border p-5 mb-6"

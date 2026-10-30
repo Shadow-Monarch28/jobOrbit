@@ -524,6 +524,56 @@ Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
   return jsonResponse({ sessionId, completed: true, result })
 }
 
+// Resume Builder helper: tailors a resume to a job, or drafts a cover letter.
+// Text-only in, JSON out. The browser validates the result (never trusting new
+// skills or extra employers), so this only needs to be a good first draft.
+async function handleBuilderAi(body) {
+  const { task, resume, job } = body
+  const jobTitle = String(job?.title || '').slice(0, 120)
+  const jobCompany = String(job?.company || '').slice(0, 120)
+  const jobText = String(job?.description || '').slice(0, 2200)
+  if (!jobTitle) return jsonResponse({ error: 'A job is required.' }, 400)
+
+  if (task === 'tailor_resume') {
+    if (!resume || typeof resume !== 'object') return jsonResponse({ error: 'A resume is required.' }, 400)
+    const prompt = `You tailor resumes to a job posting. Use ONLY facts already in the resume. Never invent employers, dates, degrees, tools, numbers or skills.
+
+Respond with ONLY valid JSON, no markdown fences:
+{
+  "headline": "<short headline matching the target role, max 80 chars>",
+  "summary": "<2-3 sentence professional summary for this role, first person implied, using only resume facts>",
+  "skills": [<the resume's existing skills only, reordered so the ones this job asks for come first>],
+  "experience": [{"i": <index>, "bullets": [<the same bullets reworded with the job's keywords where truthful, same count or fewer>]}]
+}
+
+TARGET ROLE: ${jobTitle}${jobCompany ? ` at ${jobCompany}` : ''}
+JOB DESCRIPTION:
+${jobText}
+
+RESUME (JSON):
+${JSON.stringify(resume).slice(0, 5500)}`
+    const parsed = safeParseJson(await callLLM(prompt, { asJson: true }))
+    return jsonResponse({ result: parsed })
+  }
+
+  if (task === 'cover_letter') {
+    const prompt = `Write the body of a concise, genuine cover letter (3 short paragraphs, 130-190 words total). Use ONLY facts from the resume summary below; do not invent achievements. No placeholders.
+
+Respond with ONLY valid JSON, no markdown fences: {"paragraphs": ["<para 1>", "<para 2>", "<para 3>"]}
+
+ROLE: ${jobTitle}${jobCompany ? ` at ${jobCompany}` : ''}
+JOB DESCRIPTION:
+${jobText}
+
+CANDIDATE (JSON):
+${JSON.stringify(resume || {}).slice(0, 4000)}`
+    const parsed = safeParseJson(await callLLM(prompt, { asJson: true }))
+    return jsonResponse({ result: parsed })
+  }
+
+  return jsonResponse({ error: 'Unknown builder task.' }, 400)
+}
+
 const GENERIC_ERROR = 'Action Unsuccessful'
 
 Deno.serve(async (req) => {
@@ -541,7 +591,8 @@ Deno.serve(async (req) => {
     if (body.action === 'resume_review') return await handleResumeReview(supabase, user.id, body)
     if (body.action === 'mock_interview') return await handleMockInterview(supabase, user.id, body)
     if (body.action === 'skill_builder') return await handleSkillBuilder(supabase, user.id, body)
-    return jsonResponse({ error: 'Unknown action. Use "mock_interview", "resume_review", or "skill_builder".' }, 400)
+    if (body.action === 'builder_ai') return await handleBuilderAi(body)
+    return jsonResponse({ error: 'Unknown action.' }, 400)
   } catch (err) {
     console.error('ai-coach function error:', err)
     // Admins get the raw error (Groq status, quota text...). Everyone else gets

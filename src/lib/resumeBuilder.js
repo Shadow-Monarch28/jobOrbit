@@ -89,7 +89,7 @@ export function parseSections(lines) {
 
 // ---------- 3. skills section ----------
 
-function splitSkillItems(bodyLines) {
+export function splitSkillItems(bodyLines) {
   const items = []
   for (const raw of bodyLines) {
     const text = raw.replace(BULLET_RE, '')

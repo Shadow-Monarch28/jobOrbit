@@ -1,7 +1,11 @@
 // Every source the Discover page knows about.
 //   kind 'api'  : jobs are fetched and shown in the results list.
-//   kind 'link' : the site has no public job API (and blocks scraping), so it
-//                 is offered as a ready-made search link instead of results.
+//   kind 'link' : the site has no public job API (and blocks scraping). It is
+//                 listed inside the Sources dropdown as an "opens site" entry
+//                 that opens the site's own search in a new tab. It is never
+//                 selectable, never part of "All", and never shows a note.
+//                 Add any future feed-less source here with kind: 'link' and a
+//                 case in buildSourceLink; nothing else needs to change.
 export const SOURCES = [
   { key: 'adzuna', label: 'Adzuna', kind: 'api' },
   { key: 'lever', label: 'Lever', kind: 'api' },
@@ -18,7 +22,7 @@ export const SOURCES = [
 
 export const SOURCE_LABEL = Object.fromEntries(SOURCES.map((s) => [s.key, s.label]))
 export const API_SOURCE_KEYS = SOURCES.filter((s) => s.kind === 'api').map((s) => s.key)
-export const ALL_SOURCE_KEYS = SOURCES.map((s) => s.key)
+export const LINK_SOURCES = SOURCES.filter((s) => s.kind === 'link')
 
 // Search URL on each link-out site for the given title and country.
 export function buildSourceLink(key, { title = '', country = '' } = {}) {

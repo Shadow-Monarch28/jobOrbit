@@ -73,3 +73,9 @@ export function startSkillBuilder({ skillName }) {
 export function continueSkillBuilder({ sessionId, userAnswer }) {
   return invokeAiCoach({ action: 'skill_builder', sessionId, userAnswer })
 }
+
+// Resume Builder: tailor a resume to a job, or draft a cover letter. Callers
+// should fall back to the offline drafts in resumeModel.js if this fails.
+export function requestBuilderAi({ task, resume, job }) {
+  return invokeAiCoach({ action: 'builder_ai', task, resume, job })
+}

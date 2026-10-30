@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { searchAllJobs } from '../lib/jobSources'
 import { searchAdzuna } from '../lib/jobSources/adzuna'
-import { ALL_SOURCE_KEYS, API_SOURCE_KEYS } from '../lib/jobSources/sourceMeta'
+import { API_SOURCE_KEYS } from '../lib/jobSources/sourceMeta'
 import { INDUSTRY_OPTIONS, categorizeJob } from '../lib/data/jobCatalog'
 
-const ALL_SOURCES = ALL_SOURCE_KEYS
+const ALL_SOURCES = API_SOURCE_KEYS
 const PAGE_SIZE = 20
 const DAY_MS = 1000 * 60 * 60 * 24
 
@@ -242,7 +242,6 @@ export function useJobSearch({ jobPredicate } = {}) {
     clearFilters,
     loadMoreAdzuna,
     canLoadMore: activeSources.includes('adzuna'),
-    linkSources: activeSources.filter((k) => !API_SOURCE_KEYS.includes(k)),
     canShowMoreLocally: visibleCount < filteredJobs.length,
     showMoreLocally: () => setVisibleCount((c) => c + PAGE_SIZE),
   }
