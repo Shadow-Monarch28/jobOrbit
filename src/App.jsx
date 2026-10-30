@@ -20,6 +20,10 @@ import SkillBuilder from './pages/SkillBuilder'
 import CareerInsights from './pages/CareerInsights'
 import HowItWorks from './pages/HowItWorks'
 import Account from './pages/Account'
+import ResumeBuilder from './pages/ResumeBuilder'
+import ResumeEditor from './pages/ResumeEditor'
+
+if (typeof document !== 'undefined') document.title = 'JobOrbit'
 
 export default function App() {
   return (
@@ -52,6 +56,9 @@ export default function App() {
               <Route path="/insights" element={<CareerInsights />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/resume-builder" element={<ResumeBuilder />} />
+              <Route path="/resume-builder/new" element={<ResumeEditor />} />
+              <Route path="/resume-builder/edit/:id" element={<ResumeEditor />} />
             </Route>
           </Routes>
         </BrowserRouter>

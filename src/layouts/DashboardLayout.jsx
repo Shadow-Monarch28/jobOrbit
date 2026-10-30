@@ -15,6 +15,7 @@ const CAREER_LINKS = [
 const PREPARATION_LINKS = [
   { to: '/interview-lab', label: 'Interview Lab' },
   { to: '/skill-builder', label: 'Skill Builder' },
+  { to: '/resume-builder', label: 'Resume Builder' },
 ]
 
 const PROFILE_LINKS = [

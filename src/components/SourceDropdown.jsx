@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { SOURCES } from '../lib/jobSources/sourceMeta'
+import { SOURCES, buildSourceLink } from '../lib/jobSources/sourceMeta'
 
 // Multi-select dropdown: "All sources", or any combination of specific ones.
 // While everything is selected, picking one source narrows to just that one;
 // after that each click adds or removes a source (at least one stays on).
-export default function SourceDropdown({ selected, onChange }) {
+export default function SourceDropdown({ selected, onChange, title = '', country = '' }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
-  const allKeys = SOURCES.map((s) => s.key)
+  const apiSources = SOURCES.filter((s) => s.kind === 'api')
+  const linkSources = SOURCES.filter((s) => s.kind === 'link')
+  const allKeys = apiSources.map((s) => s.key)
   const allSelected = selected.length === allKeys.length
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function SourceDropdown({ selected, onChange }) {
     onChange([...selected, key])
   }
 
-  const names = SOURCES.filter((s) => selected.includes(s.key)).map((s) => s.label)
+  const names = apiSources.filter((s) => selected.includes(s.key)).map((s) => s.label)
   const summary = allSelected ? 'All sources' : names.length <= 2 ? names.join(', ') : `${names.length} sources selected`
 
   return (
@@ -60,7 +62,7 @@ export default function SourceDropdown({ selected, onChange }) {
             All sources
           </label>
           <div className="my-1 border-t" style={{ borderColor: 'var(--color-border)' }} />
-          {SOURCES.map((s) => (
+          {apiSources.map((s) => (
             <label key={s.key} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-[var(--color-surface-alt)]">
               <input
                 type="checkbox"
@@ -69,8 +71,20 @@ export default function SourceDropdown({ selected, onChange }) {
                 style={{ accentColor: 'var(--color-accent)' }}
               />
               <span className="flex-1">{s.label}</span>
-              {s.kind === 'link' && <span className="text-[11px] text-[var(--color-text-muted)]">opens site</span>}
             </label>
+          ))}
+          {linkSources.length > 0 && <div className="my-1 border-t" style={{ borderColor: 'var(--color-border)' }} />}
+          {linkSources.map((s) => (
+            <a
+              key={s.key}
+              href={buildSourceLink(s.key, { title, country })}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--color-surface-alt)]"
+            >
+              <span className="flex-1">{s.label}</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">opens site ↗</span>
+            </a>
           ))}
         </div>
       )}
