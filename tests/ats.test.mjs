@@ -55,7 +55,7 @@ const ai = applyAiTailor(im, { summary: 'Tailored.', skills: ['SQL', 'Kubernetes
 assert.ok(!ai.skills.includes('Kubernetes')); assert.equal(ai.experience[0].bullets.length, 2); assert.equal(ai.experience[1].bullets[0], 'Cleaned SQL data')
 
 // templates and filters
-assert.ok(RESUME_TEMPLATES.length >= 12 && COVER_TEMPLATES.length >= 4)
+assert.ok(RESUME_TEMPLATES.length >= 20 && COVER_TEMPLATES.length >= 15 && new Set([...RESUME_TEMPLATES, ...COVER_TEMPLATES].map((x) => x.id)).size === RESUME_TEMPLATES.length + COVER_TEMPLATES.length)
 for (const t of [...RESUME_TEMPLATES, ...COVER_TEMPLATES]) for (const g of Object.keys(TEMPLATE_CATEGORIES)) {
   assert.ok(t.tags[g]?.length, `${t.id} missing ${g}`)
   for (const v of t.tags[g]) assert.ok(TEMPLATE_CATEGORIES[g].values.includes(v), `${t.id}: ${v}`)
