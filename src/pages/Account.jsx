@@ -7,6 +7,7 @@ import OrbitArt from '../components/OrbitArt'
 import Avatar, { getDisplayName } from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 import Resume from './Resume'
+import { validateEmail } from '../lib/emailValidation'
 
 const STATUS_ORDER = ['not_applied', 'applied_pending', 'applied', 'under_review', 'shortlisted', 'not_selected']
 const MASTERY_THRESHOLD = 4
@@ -51,10 +52,14 @@ function EditProfileModal({ user, isGoogle, onClose }) {
     if (!cleanName) return setError('Please enter your name.')
     if (cleanName.length > 60) return setError('Name must be 60 characters or fewer.')
     const emailChanged = !isGoogle && cleanEmail !== (user?.email || '').toLowerCase()
-    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return setError('Please enter a valid email address.')
-    }
     setSaving(true)
+    if (emailChanged) {
+      const check = await validateEmail(cleanEmail)
+      if (!check.ok) {
+        setSaving(false)
+        return setError(check.message)
+      }
+    }
     const { error: err } = await updateProfile({ name: cleanName, email: emailChanged ? cleanEmail : null })
     setSaving(false)
     if (err) return setError(err.message || 'Could not save your changes.')

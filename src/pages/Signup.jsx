@@ -5,6 +5,7 @@ import GoogleButton from '../components/GoogleButton'
 import Logo from '../components/logo'
 import ThemeToggle from '../components/ThemeToggle'
 import OrbitArt from '../components/OrbitArt'
+import { validateEmail } from '../lib/emailValidation'
 
 
 export default function Signup() {
@@ -25,7 +26,13 @@ export default function Signup() {
     }
     setError('')
     setLoading(true)
-    const { data, error } = await signUp(email, password)
+    const check = await validateEmail(email)
+    if (!check.ok) {
+      setLoading(false)
+      setError(check.message)
+      return
+    }
+    const { data, error } = await signUp(check.email, password)
     setLoading(false)
     if (error) {
       setError(/already registered/i.test(error.message) ? "You're Already in Orbit! Log in to continue." : error.message)
