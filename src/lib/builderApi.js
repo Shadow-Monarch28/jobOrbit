@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { extractSkillsFromText } from './matchingEngine'
-import { resumeToText, coverLetterToText, linesToModel, emptyResume } from './resumeModel'
+import { resumeToText, coverLetterToText, linesToModel, emptyResume, normalizeModel } from './resumeModel'
 
 // Resumes, built resumes and cover letters share the `resumes` table.
 export const isCover = (r) => r?.doc_type === 'cover_letter'
@@ -99,7 +99,7 @@ export async function deleteDocs(userId, rows, allRows) {
 // An editable model for any resume row: built ones carry it; uploaded files are
 // re-read from storage (best effort) and mapped into sections.
 export async function loadModel(row) {
-  if (row?.content && typeof row.content === 'object') return { model: row.content, imported: false }
+  if (row?.content && typeof row.content === 'object') return { model: normalizeModel(row.content), imported: false }
   if (!row?.file_path) return { model: emptyResume(), imported: false }
   const { data, error } = await supabase.storage.from('resumes').download(row.file_path)
   if (error || !data) throw new Error("Couldn't open the uploaded file to edit it.")

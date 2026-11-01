@@ -92,6 +92,9 @@ Deno.serve(async (req: Request) => {
     if (source === 'remotive') return await handleRemotive({ q })
     if (source === 'themuse') return await handleTheMuse({ q })
     if (source === 'jobicy') return await handleJobicy({ q })
+    if (source === 'himalayas') return await handleHimalayas({ q })
+    if (source === 'workingnomads') return await handleWorkingNomads({ q })
+    if (source === 'ashby') return await handleAshby({ q })
     if (source === 'greenhouse') {
       const companiesParam = url.searchParams.get('companies')
       const list = companiesParam
@@ -364,5 +367,107 @@ async function handleGreenhouse({ q, list }: { q: string; list: string[] }) {
     .filter((j: any) => matchesQuery(q, j.title, j.description))
     // keep the payload small: description is only used for skill matching and display
     .map((j: any) => ({ ...j, description: j.description.slice(0, 3000) }))
+  return jsonResponse({ jobs, count: jobs.length, page: 1 })
+}
+
+async function handleHimalayas({ q }: { q: string }) {
+  const res = await fetch('https://himalayas.app/jobs/api?limit=100')
+  if (!res.ok) return jsonResponse({ error: `Himalayas request failed (${res.status})` }, 502)
+  const data = await res.json()
+  const jobs = (data.jobs ?? [])
+    .map((job: any) => {
+      const places = Array.isArray(job.locationRestrictions) ? job.locationRestrictions.filter(Boolean) : []
+      const min = job.minSalary ?? null
+      const max = job.maxSalary ?? null
+      const posted = job.pubDate ? new Date(Number(job.pubDate) > 1e11 ? Number(job.pubDate) : Number(job.pubDate) * 1000) : null
+      return {
+        id: `himalayas-${job.guid ?? job.applicationLink ?? job.title}`.slice(0, 180),
+        source: 'himalayas',
+        sourceId: String(job.guid ?? job.applicationLink ?? job.title).slice(0, 150),
+        title: job.title,
+        company: job.companyName ?? 'Unknown company',
+        location: places.length ? places.join(', ') : 'Remote',
+        url: job.applicationLink ?? job.guid,
+        description: stripHtml(job.description ?? job.excerpt ?? ''),
+        tags: [...(job.categories ?? []), job.employmentType].filter(Boolean),
+        postedAt: posted && !Number.isNaN(posted.getTime()) ? posted.toISOString() : null,
+        workplace: 'remote',
+        country: places.length ? places.join(', ') : null,
+        salary: min || max ? `${min ?? max} - ${max ?? min}` : null,
+        salaryMin: min ? Number(min) : null,
+        salaryMax: max ? Number(max) : null,
+      }
+    })
+    .filter((j: any) => j.title && j.url && matchesQuery(q, j.title, j.description, j.tags.join(' ')))
+  return jsonResponse({ jobs, count: jobs.length, page: 1 })
+}
+
+async function handleWorkingNomads({ q }: { q: string }) {
+  const res = await fetch('https://www.workingnomads.com/api/exposed_jobs/')
+  if (!res.ok) return jsonResponse({ error: `Working Nomads request failed (${res.status})` }, 502)
+  const data = await res.json()
+  const jobs = (Array.isArray(data) ? data : [])
+    .map((job: any) => ({
+      id: `workingnomads-${String(job.url).split('/').filter(Boolean).pop()}`,
+      source: 'workingnomads',
+      sourceId: String(job.url).split('/').filter(Boolean).pop(),
+      title: job.title,
+      company: job.company_name ?? 'Unknown company',
+      location: job.location || 'Remote',
+      url: job.url,
+      description: stripHtml(job.description ?? ''),
+      tags: [job.category_name, ...String(job.tags ?? '').split(',').map((t: string) => t.trim())].filter(Boolean),
+      postedAt: job.pub_date ? new Date(job.pub_date).toISOString() : null,
+      workplace: 'remote',
+      country: job.location || null,
+      salary: null,
+      salaryMin: null,
+      salaryMax: null,
+    }))
+    .filter((j: any) => j.title && j.url && matchesQuery(q, j.title, j.description, j.tags.join(' ')))
+    .slice(0, 150)
+  return jsonResponse({ jobs, count: jobs.length, page: 1 })
+}
+
+// Public Ashby job boards, curated like the Lever and Greenhouse lists: a name that
+// is wrong or has no public board just returns nothing.
+const DEFAULT_ASHBY_COMPANIES = ['notion', 'ramp', 'linear', 'openai', 'vercel', 'supabase', 'retool', 'deel']
+
+async function handleAshby({ q }: { q: string }) {
+  const results = await Promise.allSettled(
+    DEFAULT_ASHBY_COMPANIES.map(async (company) => {
+      const res = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${company}`)
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.jobs ?? []).map((job: any) => {
+        const locationText = job.location ?? ''
+        const { workplace, country } = normalizeWorkplace({
+          workplaceType: job.isRemote ? 'remote' : null,
+          locationText,
+        })
+        return {
+          id: `ashby-${company}-${job.id ?? job.jobUrl}`.slice(0, 180),
+          source: 'ashby',
+          sourceId: `${company}-${job.id ?? job.jobUrl}`.slice(0, 150),
+          title: job.title,
+          company,
+          location: locationText,
+          url: job.applyUrl ?? job.jobUrl,
+          description: (job.descriptionPlain ?? stripHtml(job.descriptionHtml ?? '')).slice(0, 3000),
+          tags: [job.department, job.team, job.employmentType].filter(Boolean),
+          postedAt: job.publishedAt ? new Date(job.publishedAt).toISOString() : null,
+          workplace,
+          country,
+          salary: null,
+          salaryMin: null,
+          salaryMax: null,
+        }
+      })
+    })
+  )
+  const jobs = results
+    .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
+    .flatMap((r) => r.value)
+    .filter((j: any) => j.title && j.url && matchesQuery(q, j.title, j.description))
   return jsonResponse({ jobs, count: jobs.length, page: 1 })
 }

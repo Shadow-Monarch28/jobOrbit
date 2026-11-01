@@ -1,7 +1,8 @@
 // The structured resume / cover-letter model used by the Resume Builder,
 // plus import (text -> model), export (model -> plain text) and the
 // deterministic "tailor to a job" fallback.
-import { parseSections, splitSkillItems } from './resumeBuilder'
+import { parseSections, splitSkillItems, cleanHeading } from './resumeBuilder'
+import { SKILL_SUGGESTIONS } from './data/skills'
 import { getJobRequiredSkills } from './matchingEngine'
 
 let idCounter = 0
@@ -64,30 +65,46 @@ function splitHeader(text) {
 function parseExperience(lines) {
   const entries = []
   let cur = null
-  let pending = ''
+  let pre = [] // lines seen just before a dated line: usually "Title" then "Company"
+  const clean = (t) => t.replace(BULLET, '').trim()
   lines.forEach((raw, i) => {
     const line = raw.trim()
     if (!line) return
     const isBullet = BULLET.test(line)
     const hasDate = RANGE.test(line) && !isBullet && line.length < 140
     const next = (lines[i + 1] || '').trim()
+    const next2 = (lines[i + 2] || '').trim()
     if (hasDate) {
       const h = splitHeader(line)
-      if (!h.title && pending) h.title = pending
-      else if (pending && !h.org) { h.org = h.title; h.title = pending }
-      pending = ''
+      if (pre.length >= 2 && !h.org) {
+        // "Title / Company / Jul 2024 - Present | City": the dated line only adds dates and place
+        h.location = [h.title, h.location].filter(Boolean).join(', ')
+        h.org = pre[pre.length - 1]
+        h.title = pre[pre.length - 2]
+      } else if (pre.length >= 2 && h.org) {
+        h.location = [h.title, h.org, h.location].filter(Boolean).join(', ')
+        h.org = pre[pre.length - 1]
+        h.title = pre[pre.length - 2]
+      } else if (pre.length === 1) {
+        if (!h.title) h.title = pre[0]
+        else { h.org = h.title; h.title = pre[0] }
+      }
+      pre = []
       cur = { id: uid(), ...h, bullets: [] }
       entries.push(cur)
     } else if (cur) {
-      const text = line.replace(BULLET, '').trim()
-      const looksLikeNewHeader = !isBullet && text.length < 70 && !/[.;]$/.test(text) && RANGE.test(next) && cur.bullets.length > 0
-      if (looksLikeNewHeader) pending = text
+      const text = clean(line)
+      const headerAhead = RANGE.test(next) || (RANGE.test(next2) && next.length < 60 && !BULLET.test(next))
+      const looksLikeNewHeader = !isBullet && text.length < 70 && !/[.;]$/.test(text) && headerAhead && cur.bullets.length > 0
+      if (looksLikeNewHeader) pre.push(text)
+      else if (pre.length > 0 && !isBullet && text.length < 70 && !/[.;]$/.test(text)) pre.push(text)
       else if (!isBullet && cur.bullets.length === 0 && text.length < 60 && !cur.org) cur.org = text
       else if (!isBullet && cur.bullets.length > 0 && !/[.!?]$/.test(cur.bullets[cur.bullets.length - 1]) && /^[a-z]/.test(text))
         cur.bullets[cur.bullets.length - 1] += ` ${text}` // wrapped line
       else cur.bullets.push(text)
     } else {
-      pending = line.replace(BULLET, '')
+      pre.push(clean(line))
+      if (pre.length > 3) pre.shift()
     }
   })
   return entries.map((e) => ({ ...e, bullets: e.bullets.length ? e.bullets : [''] }))
@@ -132,7 +149,118 @@ function parseProjects(lines) {
   return entries.map((e) => ({ ...e, bullets: e.bullets.length ? e.bullets : [''] }))
 }
 
+const ISSUERS = new Set(['ibm', 'google', 'microsoft', 'aws', 'amazon', 'coursera', 'udemy', 'meta', 'oracle', 'cisco', 'salesforce', 'linkedin', 'simplilearn', 'edx', 'harvard', 'stanford', 'mit', 'infosys', 'wipro', 'tcs', 'nptel', 'datacamp', 'kaggle', 'tableau', 'sap', 'pmi', 'scrum.org', 'comptia', 'isc2', 'cfa institute', 'great learning', 'upgrad', 'unacademy', 'skillshare', 'codecademy', 'hackerrank', 'deeplearning.ai', 'duke university', 'university of michigan'])
+const JOINERS = /\b(using|and|&|of|with|in|for|to|the|a|an|by|on|at|from|or)$/i
+
+// Joins a certificate that wrapped over two lines, and attaches issuer headings
+// ("IBM" above "Python (Pandas, NumPy)") to the line they introduce.
+function tidyCertLines(lines) {
+  const joined = []
+  for (const l of lines) {
+    const prev = joined[joined.length - 1]
+    const open = prev && (prev.match(/\(/g) || []).length > (prev.match(/\)/g) || []).length
+    if (prev && (open || JOINERS.test(prev) || /^[a-z)]/.test(l))) joined[joined.length - 1] = `${prev} ${l}`
+    else joined.push(l)
+  }
+  const isIssuer = (t) => {
+    const words = t.trim().split(/\s+/)
+    return words.length <= 2 && !/\d/.test(t) && (ISSUERS.has(t.trim().toLowerCase()) || /^[A-Z]{2,6}$/.test(t.trim()))
+  }
+  const out = []
+  for (let i = 0; i < joined.length; i++) {
+    if (isIssuer(joined[i]) && joined[i + 1] && !isIssuer(joined[i + 1])) { out.push(`${joined[i].trim()}: ${joined[i + 1]}`); i++ }
+    else out.push(joined[i])
+  }
+  return out
+}
+
 const bulletsOf = (lines) => lines.map((l) => l.replace(BULLET, '').trim()).filter(Boolean)
+
+
+const LABEL_ONLY = /^(email|e-mail|phone|mobile|tel|telephone|contact|address|location|linkedin|github|portfolio|website|links?)\s*:?$/i
+const SKILL_SET = new Set(SKILL_SUGGESTIONS.map((x) => x.toLowerCase()))
+const wordCount = (t) => t.trim().split(/\s+/).filter(Boolean).length
+
+// A full sentence of work description, not a skill, degree or certificate name.
+function looksLikeSentence(text) {
+  const t = text.replace(BULLET, '').trim()
+  const w = wordCount(t)
+  if (DEGREE.test(t) && SCHOOL.test(t)) return false
+  const startsWithAction = /^(?:[A-Z][a-z]+(?:ed|ing)|Led|Ran|Built|Wrote|Drove|Made)\s+[a-z0-9]/.test(t)
+  return w >= 11 || (BULLET.test(text) && w >= 7) || (startsWithAction && w >= 6)
+}
+
+// Short comma-separated tool names with no degree, school or year in them.
+function looksLikeSkillLine(text) {
+  const t = text.replace(BULLET, '').trim()
+  if (!t || DEGREE.test(t) || SCHOOL.test(t) || /\b(19|20)\d{2}\b/.test(t) || looksLikeSentence(t)) return false
+  const parts = splitSkillItems([t])
+  return parts.length > 0 && parts.every((p) => wordCount(p) <= 4) && parts.some((p) => SKILL_SET.has(p.toLowerCase()) || SKILL_SET.has(p.toLowerCase().replace(/\s*\(.*\)$/, '')))
+}
+
+// Splits a line into contact bits (email, phone, link, bare "Email" labels) and what is left.
+const PHONE_ANY = /(?:\+?\d[\d\s().-]{7,}\d)/
+function pullContact(line) {
+  const text = String(line).trim()
+  if (LABEL_ONLY.test(text)) return { moved: [], rest: '' }
+  const moved = []
+  let rest = text
+  const email = rest.match(EMAIL)
+  if (email) { moved.push(email[0]); rest = rest.replace(email[0], ' ') }
+  const link = rest.match(LINK)
+  if (link && !BULLET.test(text)) { moved.push(link[0]); rest = rest.replace(link[0], ' ') }
+  const phone = rest.match(PHONE_ANY)
+  if (phone && phone[0].replace(/\D/g, '').length >= 9 && !/\b(19|20)\d{2}\s*[-–]\s*(19|20)\d{2}\b/.test(phone[0])) { moved.push(phone[0].trim()); rest = rest.replace(phone[0], ' ') }
+  rest = rest.replace(/\b(email|e-mail|phone|mobile|tel|linkedin|github)\s*:?\s*$/i, '').replace(/^\s*(email|e-mail|phone|mobile|tel)\s*:?\s+/i, '').replace(/\s+/g, ' ').trim()
+  return { moved, rest }
+}
+
+// Real resumes get read imperfectly (columns, odd layouts). This is a safety net that
+// moves obvious strays back where they belong instead of leaving them in the wrong
+// section: contact blocks go to the header, work sentences leave Skills/Education/
+// Certifications, and tool lists leave Education.
+export function repairSections(sectionsIn, header) {
+  const sections = sectionsIn.map((s) => ({ ...s, lines: [...s.lines] }))
+  const is = (s, re) => re.test(s.heading.toLowerCase())
+  const kept = []
+  for (const s of sections) {
+    if (is(s, /^(contact|personal)( details| information)?$/)) header.push(...s.lines)
+    else kept.push(s)
+  }
+  // Contact details that ended up inside a section (a sidebar read as part of the
+  // job history): the email, phone and link go to the header and the rest stays.
+  for (const s of kept) {
+    const stay = []
+    for (const l of s.lines) {
+      const { moved, rest } = pullContact(l)
+      if (moved.length) header.push(...moved)
+      if (rest) stay.push(rest)
+    }
+    s.lines = stay
+  }
+  const find = (re) => [...kept].reverse().find((s) => is(s, re))
+  const work = find(/experience|employment|internship/) || find(/project/)
+  let skills = find(/skill|competenc|technolog/)
+  const strayWork = []
+  const strayTools = []
+  for (const s of kept) {
+    if (is(s, /skill|competenc|technolog/) || is(s, /education|academic/) || is(s, /certif|award|achievement|license/)) {
+      const stay = []
+      for (const l of s.lines) {
+        if (work && looksLikeSentence(l)) strayWork.push(l)
+        else if (is(s, /education|academic/) && looksLikeSkillLine(l)) strayTools.push(l)
+        else stay.push(l)
+      }
+      s.lines = stay
+    }
+  }
+  if (strayWork.length && work) work.lines.push(...strayWork.map((l) => (BULLET.test(l) ? l : `- ${l}`)))
+  if (strayTools.length) {
+    if (!skills) { skills = { heading: 'Skills', lines: [] }; kept.push(skills) }
+    skills.lines.push(...strayTools)
+  }
+  return kept.filter((s, i) => s.lines.length > 0 || !/skill|education|certif/i.test(s.heading) || i >= 0)
+}
 
 /**
  * Best-effort import of a resume's lines (strings or {text,size}) into the
@@ -142,7 +270,10 @@ export function linesToModel(rawLines) {
   const lines = rawLines.map((l) => (typeof l === 'string' ? { text: l, size: 0 } : l)).filter((l) => l.text?.trim())
   const model = emptyResume()
   if (lines.length === 0) return model
-  const { name, header, sections } = parseSections(lines)
+  const parsed = parseSections(lines)
+  const name = parsed.name
+  const header = [...parsed.header]
+  const sections = repairSections(parsed.sections, header)
   model.name = name.trim()
 
   const headerText = header.join(' | ')
@@ -158,7 +289,8 @@ export function linesToModel(rawLines) {
   const rest = header
     .flatMap((h) => h.split(/\s[|•·]\s|\s{2,}/))
     .map((h) => h.trim())
-    .filter((h) => h && !EMAIL.test(h) && !LINK.test(h) && h.replace(/\D/g, '').length < 7)
+    .map((h) => h.replace(/^(email|e-mail|phone|mobile|tel|contact|address|location|linkedin|github|portfolio|website)\s*:\s*/i, ''))
+    .filter((h) => h && !LABEL_ONLY.test(h) && !EMAIL.test(h) && !LINK.test(h) && h.replace(/\D/g, '').length < 7)
   model.headline = rest.find((h) => h.length <= 90 && !/,\s*[A-Z]{2}\b/.test(h) && !/^\d/.test(h)) || ''
   model.contact.location = rest.find((h) => h !== model.headline && h.length <= 60) || ''
 
@@ -169,12 +301,49 @@ export function linesToModel(rawLines) {
     else if (/education|academic/.test(h)) model.education.push(...parseEducation(sec.lines))
     else if (/project/.test(h)) model.projects.push(...parseProjects(sec.lines))
     else if (/skill|competenc|technolog/.test(h)) model.skills.push(...splitSkillItems(sec.lines))
-    else if (/certif|award|achievement|license/.test(h)) model.certifications.push(...bulletsOf(sec.lines))
+    else if (/certif|award|achievement|license/.test(h)) model.certifications.push(...tidyCertLines(bulletsOf(sec.lines)))
     else model.extra.push({ id: uid(), heading: sec.heading, lines: bulletsOf(sec.lines) })
   }
   const seen = new Set()
   model.skills = model.skills.filter((s) => (seen.has(s.toLowerCase()) ? false : seen.add(s.toLowerCase())))
   return model
+}
+
+// Repairs resumes saved before the reader was fixed: letter-spaced extra headings
+// ("W O R K E X P E R I E N C E") become "Work Experience". Safe to run repeatedly.
+export function normalizeModel(m) {
+  if (!m || typeof m !== 'object') return m
+  const out = { ...m, extra: [] }
+  const next = { ...m, contact: { ...(m.contact || {}) }, experience: [...(m.experience || [])], education: [...(m.education || [])], projects: [...(m.projects || [])], skills: [...(m.skills || [])], certifications: [...(m.certifications || [])] }
+  const header = []
+  const stranded = []
+  for (const x of m.extra || []) {
+    const heading = cleanHeading(x.heading || '')
+    // A resume saved before the reader was fixed can hold a real section ("W O R K
+    // E X P E R I E N C E", "SKILLS") as an extra block. Put it back where it belongs.
+    if (/^(work experience|experience|employment( history)?|professional experience|education|projects?|skills?|technical skills|certifications?( and awards)?)$/i.test(heading)) stranded.push({ heading, lines: x.lines || [] })
+    else if (ISSUERS.has(heading.trim().toLowerCase()) || /^[A-Z]{2,6}$/.test(heading.trim())) {
+      // An issuer name ("IBM", "Google") that was read as a section: back under Certifications.
+      for (const l of bulletsOf(x.lines || [])) next.certifications.push(`${heading.trim()}: ${l}`)
+    } else out.extra.push({ ...x, heading })
+  }
+  if (stranded.length) {
+    const repaired = repairSections(stranded.map((s) => ({ heading: s.heading, lines: [...s.lines] })), header)
+    for (const sec of repaired) {
+      const h = sec.heading.toLowerCase()
+      if (/experience|employment/.test(h)) next.experience.push(...parseExperience(sec.lines))
+      else if (/education/.test(h)) next.education.push(...parseEducation(sec.lines))
+      else if (/project/.test(h)) next.projects.push(...parseProjects(sec.lines))
+      else if (/skill/.test(h)) next.skills.push(...splitSkillItems(sec.lines))
+      else next.certifications.push(...tidyCertLines(bulletsOf(sec.lines)))
+    }
+    const headerText = header.join(' | ')
+    if (!next.contact.email) next.contact.email = (headerText.match(EMAIL) || [''])[0]
+    if (!next.contact.phone) next.contact.phone = (headerText.replace(EMAIL, '').match(PHONE) || [''])[0].trim()
+    const seen = new Set()
+    next.skills = next.skills.filter((s) => (seen.has(String(s).toLowerCase()) ? false : seen.add(String(s).toLowerCase())))
+  }
+  return { ...next, extra: out.extra }
 }
 
 // ---------- model -> text ----------

@@ -51,7 +51,7 @@ const selectClass = 'flex-1 px-2.5 py-1.5 rounded-lg border bg-transparent text-
 const inputClass = 'flex-1 px-2.5 py-1.5 rounded-lg border bg-transparent text-sm min-w-0'
 
 export default function Search() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const [applicationStatusMap, setApplicationStatusMap] = useState({})
   const [defaultResume, setDefaultResume] = useState(null)
   const [matchResumeOnly, setMatchResumeOnly] = useState(false)
@@ -267,7 +267,7 @@ export default function Search() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-[var(--color-text-muted)] w-28 shrink-0">Sources</span>
-          <SourceDropdown selected={activeSources} onChange={setActiveSources} title={titleChips[0] ?? ''} country={locationChips[0] ?? ''} />
+          <SourceDropdown selected={activeSources} onChange={setActiveSources} title={titleChips[0] ?? ''} country={locationChips[0] ?? ''} showLinks={isAdmin} />
         </div>
       </div>
 

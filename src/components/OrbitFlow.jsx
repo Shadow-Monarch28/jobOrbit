@@ -22,6 +22,26 @@ const STEPS = [
     ),
   },
   {
+    label: 'Build',
+    color: '#0ea5e9',
+    icon: (
+      <>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+      </>
+    ),
+  },
+  {
+    label: 'Score',
+    color: '#22c55e',
+    icon: (
+      <>
+        <path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
+  },
+  {
     label: 'Apply',
     color: '#14b8a6',
     icon: (
@@ -69,15 +89,15 @@ const STEPS = [
   },
 ]
 
-// Six glowing steps joined by a gradient line: Upload → Grow.
+// Eight glowing steps joined by a gradient line: Upload → Grow.
 export default function OrbitFlow() {
   return (
-    <ol className="flex items-start mt-6" aria-label="Upload, Discover, Apply, Review, Improve, Grow">
+    <ol className="flex items-start mt-6" aria-label="Upload, Discover, Build, Score, Apply, Review, Improve, Grow">
       {STEPS.map((s, i) => (
         <li key={s.label} className="contents">
-          <div className="flex flex-col items-center gap-2 shrink-0 w-11 sm:w-16">
+          <div className="flex flex-col items-center gap-2 shrink-0 w-8 sm:w-16">
             <span
-              className="w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center border-2"
+              className="w-8 h-8 sm:w-14 sm:h-14 rounded-full flex items-center justify-center border-2"
               style={{
                 borderColor: s.color,
                 backgroundColor: `color-mix(in srgb, ${s.color} 18%, var(--color-surface))`,
@@ -86,7 +106,7 @@ export default function OrbitFlow() {
               }}
             >
               <svg
-                className="w-[18px] h-[18px] sm:w-6 sm:h-6"
+                className="w-[14px] h-[14px] sm:w-6 sm:h-6"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -98,10 +118,10 @@ export default function OrbitFlow() {
                 {s.icon}
               </svg>
             </span>
-            <span className="text-[10px] sm:text-sm font-medium text-center">{s.label}</span>
+            <span className="text-[9px] sm:text-sm font-medium text-center">{s.label}</span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className="flex-1 relative h-0.5 mt-5 sm:mt-7 min-w-2">
+            <div className="flex-1 relative h-0.5 mt-4 sm:mt-7 min-w-2">
               <div
                 className="absolute inset-0 rounded-full"
                 style={{ background: `linear-gradient(90deg, ${s.color}, ${STEPS[i + 1].color})` }}

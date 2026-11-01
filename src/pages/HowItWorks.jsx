@@ -6,7 +6,8 @@ const STEPS = [
     number: '01',
     title: 'Discover',
     headline: 'Less Scrolling. More Dream Jobs.',
-    blurb: 'Find real job postings, save the good ones, and leave the endless browser tabs behind.',
+    blurb:
+      'Search real job postings from many sources, filter by country, role and skills, save the good ones, and let the Match my resume switch show only roles that fit you.',
     to: '/search',
     cta: 'Find Your Next Move',
   },
@@ -21,6 +22,24 @@ const STEPS = [
   },
   {
     number: '03',
+    title: 'Resume Builder',
+    headline: 'Build Resumes That Beat the Bots.',
+    blurb:
+      'Pick from 21 resume and 15 cover letter templates, import an existing resume to edit it, or tailor a new one to a saved job. Download as PDF and set any resume as your default.',
+    to: '/resume-builder',
+    cta: 'Start Building',
+  },
+  {
+    number: '04',
+    title: 'ATS Evaluator',
+    headline: 'Know Your Score Before They Do.',
+    blurb:
+      'Check any resume against a saved job for an ATS score out of 100, the keywords you are missing, and fixes you can apply in one click. Fixes make a new resume and your original stays untouched.',
+    to: '/resume-builder?tab=ats',
+    cta: 'Check My Score',
+  },
+  {
+    number: '05',
     title: 'Applications',
     headline: 'Keep the Hustle. Lose the Chaos.',
     blurb:
@@ -29,7 +48,7 @@ const STEPS = [
     cta: 'Track Your Journey',
   },
   {
-    number: '04',
+    number: '06',
     title: 'Orbit Mentor: Interview Lab',
     headline: 'Less Interview Panic. More Main-Character Energy.',
     blurb:
@@ -38,7 +57,7 @@ const STEPS = [
     cta: 'Put Yourself to the Test',
   },
   {
-    number: '05',
+    number: '07',
     title: 'Skill Builder',
     headline: 'Skill Gaps Today. Career Flex Tomorrow.',
     blurb:
@@ -47,7 +66,7 @@ const STEPS = [
     cta: 'Level Up',
   },
   {
-    number: '06',
+    number: '08',
     title: 'Career Insights',
     headline: 'Your Progress Has Receipts.',
     blurb:
@@ -65,9 +84,9 @@ export default function HowItWorks() {
       <OrbitFlow />
 
       <p className="text-[var(--color-text-muted)] mt-8 leading-relaxed">
-        Six connected stages turn your career goals into actionable steps. Your resume powers your
-        matches, your reviews reveal opportunities to improve, and your progress comes to life through
-        personalized insights.
+        Eight connected stages turn your career goals into actionable steps. Your resume powers your
+        matches, the ATS Evaluator shows how to improve it, the Resume Builder turns those fixes into a
+        stronger resume, and your progress comes to life through personalized insights.
       </p>
       <p className="text-sm font-medium mt-4">Your journey. Your data. Your momentum.</p>
 

@@ -1,12 +1,196 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { categorizeSkill, CATEGORY_ORDER } from './skillCategories'
+import { SKILL_SUGGESTIONS } from './data/skills'
+
+const SKILL_WORDS = new Set(SKILL_SUGGESTIONS.map((x) => x.toLowerCase()))
 
 // ---------- 1. pdf.js text items -> physical lines ----------
 
-// pdf.js returns text as small positioned chunks. Group chunks that share a
-// baseline (y) into one line, left to right, inserting a space only where
-// there's a real visual gap. Pure function so it can be tested without a
-// browser; resumeExtract.js feeds it real pdf.js output.
+// pdf.js returns text as small positioned chunks. This groups them into lines
+// in reading order. Two things make real resumes hard, and both are handled:
+//  - Two-column layouts (a sidebar next to the main column). Chunks on the same
+//    baseline but in different columns must NOT be glued into one line, or the
+//    sidebar's contact details end up inside the job history. The page is split
+//    at the empty vertical gutter and each column is read top to bottom.
+//  - Letter-spaced headings ("W O R K   E X P E R I E N C E"), which pdf.js
+//    delivers one character at a time.
+// Pure function, so it can be tested without a browser.
+
+const HEADING_WORDS = [
+  'work', 'experience', 'professional', 'summary', 'profile', 'objective', 'education', 'skills', 'skill', 'technical',
+  'projects', 'project', 'certifications', 'certification', 'achievements', 'awards', 'personal', 'details', 'contact',
+  'languages', 'interests', 'references', 'employment', 'history', 'career', 'core', 'competencies', 'internship',
+  'internships', 'training', 'courses', 'volunteer', 'key', 'and', 'academic', 'qualifications', 'publications', 'hobbies',
+  'strengths', 'tools', 'technologies', 'about', 'me', 'information', 'licenses', 'honors', 'extracurricular', 'activities',
+  'additional', 'relevant', 'selected', 'research', 'leadership', 'declaration', 'software', 'of', 'in', 'my',
+]
+
+// "WORKEXPERIENCE" -> "WORK EXPERIENCE" when it splits cleanly into known heading words.
+export function respaceHeading(text) {
+  const t = String(text || '').trim()
+  if (!t || /\s/.test(t) || t.length < 6 || t.length > 40) return t
+  const lower = t.toLowerCase()
+  const best = new Array(lower.length + 1).fill(null)
+  best[0] = []
+  for (let i = 0; i < lower.length; i++) {
+    if (!best[i]) continue
+    for (const w of HEADING_WORDS) {
+      if (lower.startsWith(w, i) && (!best[i + w.length] || best[i + w.length].length > best[i].length + 1)) best[i + w.length] = [...best[i], w]
+    }
+  }
+  const words = best[lower.length]
+  if (!words || words.length < 2) return t
+  let pos = 0
+  return words.map((w) => { const part = t.slice(pos, pos + w.length); pos += w.length; return part }).join(' ')
+}
+
+// Cleans a heading that was stored letter by letter ("S K I L L S", "W O R K E X P E R I E N C E").
+export function cleanHeading(text) {
+  let t = String(text || '').replace(/\s+/g, ' ').trim()
+  const tokens = t.split(' ')
+  if (tokens.length >= 4 && tokens.filter((x) => x.length === 1).length / tokens.length >= 0.8) t = tokens.join('')
+  t = respaceHeading(t)
+  // Short single words in capitals (IBM, AWS, CFA) are acronyms: keep them as written.
+  if (t === t.toUpperCase() && /[A-Z]{3}/.test(t) && !(t.length <= 4 && !t.includes(' '))) t = t.toLowerCase().replace(/(^|[\s&/-])([a-z])/g, (m, a, b) => a + b.toUpperCase())
+  return t
+}
+
+function buildLines(chunks) {
+  const sorted = [...chunks].sort((a, b) => (Math.abs(b.y - a.y) > 2.5 ? b.y - a.y : a.x - b.x))
+  const rows = []
+  for (const c of sorted) {
+    const row = rows[rows.length - 1]
+    if (row && Math.abs(row.y - c.y) <= 2.5) row.chunks.push(c)
+    else rows.push({ y: c.y, chunks: [c] })
+  }
+
+  const lines = []
+  for (const row of rows) {
+    row.chunks.sort((a, b) => a.x - b.x)
+    const letterSpaced = row.chunks.length >= 4 && row.chunks.filter((c) => c.str.trim().length === 1).length / row.chunks.length >= 0.7
+    let text = ''
+    let size = 0
+    if (letterSpaced) {
+      const gaps = []
+      for (let i = 1; i < row.chunks.length; i++) gaps.push(row.chunks[i].x - (row.chunks[i - 1].x + row.chunks[i - 1].w))
+      const sortedGaps = gaps.filter((g) => g > 0).sort((a, b) => a - b)
+      const median = sortedGaps.length ? sortedGaps[Math.floor(sortedGaps.length / 2)] : 0
+      let brk = false
+      row.chunks.forEach((c, i) => {
+        size = Math.max(size, c.size)
+        if (c.str.trim() === '') { brk = true; return }
+        if (i > 0 && median > 0 && gaps[i - 1] > Math.max(median * 2, c.size * 0.55)) brk = true
+        text += (brk && text ? ' ' : '') + c.str.trim()
+        brk = false
+      })
+      text = respaceHeading(text)
+    } else {
+      let prevEnd = null
+      for (const c of row.chunks) {
+        size = Math.max(size, c.size)
+        if (prevEnd !== null) {
+          const gap = c.x - prevEnd
+          const needsSpace = gap > c.size * 0.15 && !text.endsWith(' ') && !c.str.startsWith(' ')
+          if (needsSpace) text += ' '
+        }
+        text += c.str
+        prevEnd = c.x + c.w
+      }
+    }
+    text = text.replace(/\s+/g, ' ').replace(/\s+([,;:.)])/g, '$1').replace(/\(\s+/g, '(').trim()
+    if (text) {
+      const first = row.chunks[0]
+      const last = row.chunks[row.chunks.length - 1]
+      lines.push({ text, size, y: row.y, x0: first.x, x1: last.x + last.w })
+    }
+  }
+  return mergeWrapped(lines)
+}
+
+// A line that ran to the right edge of its column and continues on the next line
+// ("Advanced Data Analyst using" / "Python & MS Excel") is one line, not two.
+function mergeWrapped(lines) {
+  if (lines.length < 2) return lines
+  const right = Math.max(...lines.map((l) => l.x1))
+  const left = Math.min(...lines.map((l) => l.x0))
+  const width = right - left
+  if (width < 60) return lines
+  const out = []
+  for (const line of lines) {
+    const prev = out[out.length - 1]
+    const startsNewItem = /^\s*([•▪●◦‣■□*]|[-–]\s)/.test(line.text)
+    const tight = prev && prev.y - line.y > 0 && prev.y - line.y <= Math.max(prev.size, line.size) * 1.55
+    const sameSize = prev && Math.abs(prev.size - line.size) < 0.6
+    const aligned = prev && Math.abs(prev.x0 - line.x0) <= 3
+    // The previous line is "full" if the next word would not have fitted after it.
+    const firstWord = prev ? line.text.split(' ')[0] : ''
+    const nextWordW = prev ? ((line.x1 - line.x0) * firstWord.length) / Math.max(line.text.length, 1) : 0
+    const reachedEdge = prev && prev.x1 + nextWordW + prev.size * 0.3 >= right - 2
+    const ended = prev && /[.:;!?]$/.test(prev.text)
+    const shouting = prev && /^[A-Z0-9 &/,-]{4,}$/.test(prev.text)
+    // Wording that cannot end a line, or a continuation that cannot start one.
+    const open = prev && (prev.text.match(/\(/g) || []).length > (prev.text.match(/\)/g) || []).length
+    const signals = prev && (open || /[,(&]$|\b(using|and|of|with|in|for|to|the|a|an|by|on|at|from|or)$/i.test(prev.text) || /^[a-z)]/.test(line.text))
+    const tail = line.text.trim().split(/\s+/).length <= 2 && !/\d/.test(line.text)
+    if (prev && tight && sameSize && aligned && !ended && !shouting && !startsNewItem && (signals || (reachedEdge && tail))) {
+      prev.text = `${prev.text} ${line.text}`
+      prev.x1 = line.x1
+      prev.y = line.y
+    } else out.push({ ...line })
+  }
+  return out
+}
+
+// Finds the vertical gutter between two columns, or null for a single column.
+export function findGutter(chunks) {
+  if (chunks.length < 16) return null
+  const minX = Math.min(...chunks.map((c) => c.x))
+  const maxX = Math.max(...chunks.map((c) => c.x + c.w))
+  const width = maxX - minX
+  if (width < 220) return null
+  const limit = Math.max(3, Math.floor(chunks.length * 0.07))
+  let best = null
+  let run = null
+  const step = 3
+  for (let x = minX + width * 0.18; x <= minX + width * 0.82; x += step) {
+    const crossing = chunks.reduce((n, c) => n + (c.x < x && c.x + c.w > x ? 1 : 0), 0)
+    if (crossing <= limit) {
+      if (!run) run = { from: x, to: x }
+      run.to = x
+    } else if (run) {
+      if (!best || run.to - run.from > best.to - best.from) best = run
+      run = null
+    }
+  }
+  if (run && (!best || run.to - run.from > best.to - best.from)) best = run
+  if (!best || best.to - best.from < 7) return null
+  const gutter = (best.from + best.to) / 2
+  const left = chunks.filter((c) => c.x < gutter)
+  const right = chunks.filter((c) => c.x >= gutter)
+  const rowsOf = (list) => new Set(list.map((c) => Math.round(c.y / 3))).size
+  const share = Math.min(left.length, right.length) / chunks.length
+  if (share < 0.12 || rowsOf(left) < 4 || rowsOf(right) < 4) return null
+  return gutter
+}
+
+function splitColumns(chunks) {
+  const gutter = findGutter(chunks)
+  if (gutter === null) return [chunks]
+  const yMax = Math.max(...chunks.map((c) => c.y))
+  const yMin = Math.min(...chunks.map((c) => c.y))
+  // A banner (usually the name) that runs across both columns at the top is read first.
+  const crossing = chunks.filter((c) => c.x < gutter && c.x + c.w > gutter && c.y >= yMax - (yMax - yMin) * 0.3)
+  const bandBottom = crossing.length ? Math.min(...crossing.map((c) => c.y)) - 2.5 : Infinity
+  const band = chunks.filter((c) => c.y >= bandBottom)
+  const rest = chunks.filter((c) => c.y < bandBottom)
+  const left = rest.filter((c) => c.x < gutter)
+  const right = rest.filter((c) => c.x >= gutter)
+  const biggest = (list) => list.reduce((m, c) => Math.max(m, c.size), 0)
+  // Without a banner, the column holding the largest text (the name) comes first.
+  const cols = band.length === 0 && biggest(right) > biggest(left) * 1.15 ? [right, left] : [left, right]
+  return [band, ...cols].filter((c) => c.length)
+}
+
 export function groupItemsIntoLines(items) {
   const chunks = items
     .filter((it) => typeof it.str === 'string' && it.str.length > 0)
@@ -17,41 +201,13 @@ export function groupItemsIntoLines(items) {
       w: it.width || 0,
       size: Math.abs(it.height || it.transform[3] || 0),
     }))
-    .sort((a, b) => (Math.abs(b.y - a.y) > 2.5 ? b.y - a.y : a.x - b.x))
-
-  const rows = []
-  for (const c of chunks) {
-    const row = rows[rows.length - 1]
-    if (row && Math.abs(row.y - c.y) <= 2.5) row.chunks.push(c)
-    else rows.push({ y: c.y, chunks: [c] })
-  }
-
-  const lines = []
-  for (const row of rows) {
-    row.chunks.sort((a, b) => a.x - b.x)
-    let text = ''
-    let prevEnd = null
-    let size = 0
-    for (const c of row.chunks) {
-      size = Math.max(size, c.size)
-      if (prevEnd !== null) {
-        const gap = c.x - prevEnd
-        const needsSpace = gap > c.size * 0.15 && !text.endsWith(' ') && !c.str.startsWith(' ')
-        if (needsSpace) text += ' '
-      }
-      text += c.str
-      prevEnd = c.x + c.w
-    }
-    text = text.replace(/\s+/g, ' ').trim()
-    if (text) lines.push({ text, size })
-  }
-  return lines
+  return splitColumns(chunks).flatMap(buildLines)
 }
 
 // ---------- 2. lines -> sections ----------
 
 const KNOWN_HEADING =
-  /^(professional\s+|career\s+|technical\s+|key\s+)?(summary|profile|objective|experience|work experience|employment( history)?|education|projects?|skills?|core competencies|certifications?|achievements?|awards?|publications?|languages|interests|references|volunteer(ing)?( experience)?|internships?|training|courses)\s*:?$/i
+  /^(professional\s+|career\s+|technical\s+|key\s+)?(summary|profile|objective|experience|work experience|employment( history)?|education( and training)?|academic( background| qualifications)?|projects?|skills?|core competencies|certifications?( and awards)?|achievements?|awards?|publications?|languages|interests|hobbies|references|volunteer(ing)?( experience)?|internships?|training|courses|contact( details| information)?|personal( details| information)?|about me)\s*:?$/i
 const SKILLS_HEADING = /^(technical\s+|key\s+|core\s+|professional\s+)?(skills?( summary| & .*)?|core competencies|technologies|competencies)\s*:?$/i
 const BULLET_RE = /^\s*([•▪●◦‣■□*]|[-–]\s|[-])\s*/
 const INSERT_BEFORE = /experience|education|project|employment|work/i
@@ -61,25 +217,47 @@ function bodySizeOf(lines) {
   return sizes.length ? sizes[Math.floor(sizes.length / 2)] : 0
 }
 
-function isHeading(line, bodySize) {
-  const t = line.text.trim()
-  if (!t || t.length > 40 || BULLET_RE.test(line.text)) return false
-  if (KNOWN_HEADING.test(t)) return true
-  const caps = /^[A-Z][A-Z0-9 &/,\-]{2,}$/.test(t)
+// Size of the lines that are clearly section headings (WORK EXPERIENCE, SKILLS ...).
+function headingSizeOf(lines) {
+  const sizes = lines
+    .filter((l) => l.size && l.text.length <= 40 && (KNOWN_HEADING.test(cleanHeading(l.text.trim().replace(/:$/, ''))) || KNOWN_HEADING.test(l.text.trim())))
+    .map((l) => l.size)
+    .sort((a, b) => a - b)
+  return sizes.length ? sizes[Math.floor(sizes.length / 2)] : 0
+}
+
+function isHeading(line, bodySize, headSize = 0) {
+  const raw = line.text.trim()
+  if (!raw || raw.length > 40 || BULLET_RE.test(line.text)) return false
+  const t = cleanHeading(raw) === raw ? raw : respaceHeading(raw)
+  if (KNOWN_HEADING.test(t) || KNOWN_HEADING.test(raw)) return true
+  if (SKILL_WORDS.has(raw.toLowerCase())) return false // "SQL", "EXCEL" in a skills list, not a heading
+  // Once real headings are known, an unknown line only counts as one if it is as big
+  // as them. An issuer name like "IBM" or "Google" under Certifications is smaller.
+  if (headSize && line.size && line.size < headSize * 0.92) return false
+  const caps = /^[A-Z][A-Z0-9 &/,\-]{3,}$/.test(t)
   const bigger = bodySize > 0 && line.size > bodySize * 1.15
   return caps || (bigger && !/[.,;]$/.test(t))
 }
 
 export function parseSections(lines) {
   const body = bodySizeOf(lines)
+  const headSize = headingSizeOf(lines)
   const nameLine = lines[0] ?? { text: '' }
   const header = []
   const sections = []
   let current = null
+  let seenKnown = false
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i]
-    if (isHeading(line, body)) {
-      current = { heading: line.text.trim().replace(/:$/, ''), lines: [] }
+    const raw = line.text.trim().replace(/:$/, '')
+    const known = KNOWN_HEADING.test(cleanHeading(raw)) || KNOWN_HEADING.test(raw)
+    // Until a real section heading has appeared, the first few lines under the name
+    // (a job title, tagline, contact line) are header text, never headings.
+    const guarded = !seenKnown && !known && i <= 3
+    if (!guarded && isHeading(line, body, headSize)) {
+      if (known) seenKnown = true
+      current = { heading: cleanHeading(line.text.trim().replace(/:$/, '')), lines: [] }
       sections.push(current)
     } else if (current) current.lines.push(line.text)
     else header.push(line.text)
@@ -88,6 +266,20 @@ export function parseSections(lines) {
 }
 
 // ---------- 3. skills section ----------
+
+// Splits on commas that are not inside brackets: "Python (Pandas, NumPy), SQL" -> 2 items.
+export function splitOutsideParens(text) {
+  const out = []
+  let depth = 0
+  let cur = ''
+  for (const ch of String(text)) {
+    if (ch === '(' || ch === '[') depth++
+    else if (ch === ')' || ch === ']') depth = Math.max(0, depth - 1)
+    if (ch === ',' && depth === 0) { out.push(cur); cur = '' } else cur += ch
+  }
+  out.push(cur)
+  return out
+}
 
 export function splitSkillItems(bodyLines) {
   const items = []
@@ -98,7 +290,7 @@ export function splitSkillItems(bodyLines) {
     for (const segment of text.split(/[|;•·\u2022]|\s{3,}/)) {
       const colon = segment.indexOf(':')
       const values = colon > 0 && colon <= 30 ? segment.slice(colon + 1) : segment
-      for (const part of values.split(',')) {
+      for (const part of splitOutsideParens(values)) {
         const item = part.trim().replace(/[.:]+$/, '')
         if (item && item.length <= 40) items.push(item)
       }

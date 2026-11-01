@@ -16,6 +16,7 @@ const PREPARATION_LINKS = [
   { to: '/interview-lab', label: 'Interview Lab' },
   { to: '/skill-builder', label: 'Skill Builder' },
   { to: '/resume-builder', label: 'Resume Builder' },
+  { to: '/resume-builder?tab=ats', label: 'ATS Evaluator' },
 ]
 
 const PROFILE_LINKS = [
@@ -24,6 +25,15 @@ const PROFILE_LINKS = [
   { to: '/saved-jobs', label: 'Saved Jobs' },
   { to: '/account', label: 'Account Details' },
 ]
+
+// NavLink ignores the query string, so the two Resume Builder entries tell
+// themselves apart by the ?tab=ats part.
+function itemActive(item, isActive, search) {
+  const atsTab = new URLSearchParams(search).get('tab') === 'ats'
+  if (item.to.includes('?tab=ats')) return isActive && atsTab
+  if (item.to === '/resume-builder') return isActive && !atsTab
+  return isActive
+}
 
 function navLinkClass({ isActive }) {
   return `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -64,6 +74,7 @@ function ChevronDown({ className = '' }) {
 // inside is clicked — a hover-only dropdown stays visually open as long as
 // the cursor sits over the trigger, even after the click already navigated.
 function NavDropdown({ label, links, pathname }) {
+  const { search } = useLocation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const isAnyActive = links.some((l) => pathname.startsWith(l.to))
@@ -107,12 +118,12 @@ function NavDropdown({ label, links, pathname }) {
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
                   `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
+                    itemActive(item, isActive, search)
                       ? ''
                       : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-alt)]'
                   }`
                 }
-                style={({ isActive }) => (isActive ? { color: 'var(--color-accent)' } : {})}
+                style={({ isActive }) => (itemActive(item, isActive, search) ? { color: 'var(--color-accent)' } : {})}
               >
                 {item.label}
               </NavLink>
@@ -237,6 +248,7 @@ function menuRowClass(isActive) {
 }
 
 function MenuGroup({ label, icon, links, open, onToggle, pathname, onClose }) {
+  const { search } = useLocation()
   const active = links.some((l) => pathname.startsWith(l.to))
   return (
     <div>
@@ -260,8 +272,8 @@ function MenuGroup({ label, icon, links, open, onToggle, pathname, onClose }) {
               key={item.to}
               to={item.to}
               onClick={onClose}
-              className={({ isActive }) => `${menuRowClass(isActive)} !py-2.5 !text-[15px]`}
-              style={({ isActive }) => (isActive ? { color: 'var(--color-accent)' } : {})}
+              className={({ isActive }) => `${menuRowClass(itemActive(item, isActive, search))} !py-2.5 !text-[15px]`}
+              style={({ isActive }) => (itemActive(item, isActive, search) ? { color: 'var(--color-accent)' } : {})}
             >
               {item.label}
             </NavLink>

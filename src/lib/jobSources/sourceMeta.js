@@ -1,11 +1,10 @@
 // Every source the Discover page knows about.
 //   kind 'api'  : jobs are fetched and shown in the results list.
-//   kind 'link' : the site has no public job API (and blocks scraping). It is
-//                 listed inside the Sources dropdown as an "opens site" entry
-//                 that opens the site's own search in a new tab. It is never
-//                 selectable, never part of "All", and never shows a note.
-//                 Add any future feed-less source here with kind: 'link' and a
-//                 case in buildSourceLink; nothing else needs to change.
+//   kind 'link' : the site has no public job API (and blocks scraping). These
+//                 are shown ONLY to the admin account, as "opens site" entries at
+//                 the bottom of the Sources dropdown. Regular users never see them
+//                 and no note is ever shown. Add a future feed-less source here with
+//                 kind: 'link' and a case in buildSourceLink.
 export const SOURCES = [
   { key: 'adzuna', label: 'Adzuna', kind: 'api' },
   { key: 'lever', label: 'Lever', kind: 'api' },
@@ -14,6 +13,9 @@ export const SOURCES = [
   { key: 'remotive', label: 'Remotive', kind: 'api' },
   { key: 'jobicy', label: 'Jobicy', kind: 'api' },
   { key: 'themuse', label: 'The Muse', kind: 'api' },
+  { key: 'himalayas', label: 'Himalayas', kind: 'api' },
+  { key: 'workingnomads', label: 'Working Nomads', kind: 'api' },
+  { key: 'ashby', label: 'Ashby', kind: 'api' },
   { key: 'arbeitnow', label: 'Arbeitnow', kind: 'api' },
   { key: 'foundit', label: 'Foundit', kind: 'link' },
   { key: 'cutshort', label: 'Cutshort', kind: 'link' },

@@ -4,11 +4,11 @@ import { SOURCES, buildSourceLink } from '../lib/jobSources/sourceMeta'
 // Multi-select dropdown: "All sources", or any combination of specific ones.
 // While everything is selected, picking one source narrows to just that one;
 // after that each click adds or removes a source (at least one stays on).
-export default function SourceDropdown({ selected, onChange, title = '', country = '' }) {
+export default function SourceDropdown({ selected, onChange, title = '', country = '', showLinks = false }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const apiSources = SOURCES.filter((s) => s.kind === 'api')
-  const linkSources = SOURCES.filter((s) => s.kind === 'link')
+  const linkSources = showLinks ? SOURCES.filter((s) => s.kind === 'link') : []
   const allKeys = apiSources.map((s) => s.key)
   const allSelected = selected.length === allKeys.length
 

@@ -1,3 +1,4 @@
+import AutoTextarea from '../components/AutoTextarea'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -10,7 +11,7 @@ import { SKILL_SUGGESTIONS } from '../lib/data/skills'
 import { RESUME_TEMPLATES, COVER_TEMPLATES, getResumeTemplate, getCoverTemplate } from '../lib/resumeTemplates'
 import {
   emptyResume, emptyCoverLetter, newExperience, newEducation, newProject,
-  tailorModelToJob, applyAiTailor, compactForAi, draftCoverLetter,
+  tailorModelToJob, applyAiTailor, compactForAi, draftCoverLetter, normalizeModel,
 } from '../lib/resumeModel'
 import { evaluateAts } from '../lib/atsEvaluator'
 import { listDocs, listJobs, loadModel, saveDoc, setDefaultDoc, isResumeDoc, docTitle } from '../lib/builderApi'
@@ -53,7 +54,7 @@ function TextInput({ label, value, onChange, placeholder, type = 'text' }) {
 function TextArea({ label, value, onChange, rows = 3, placeholder }) {
   return (
     <Field label={label}>
-      <textarea value={value || ''} onChange={(e) => onChange(e.target.value)} rows={rows} placeholder={placeholder} className={`${inputCls} resize-y`} style={bs} />
+      <AutoTextarea value={value || ''} onChange={(e) => onChange(e.target.value)} rows={rows} placeholder={placeholder} className={inputCls} style={bs} />
     </Field>
   )
 }
@@ -66,7 +67,7 @@ function Bullets({ list, onChange, label = 'Bullets' }) {
       <div className="flex flex-col gap-2">
         {list.map((b, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <textarea value={b} rows={2} onChange={(e) => set(i, e.target.value)} className={`${inputCls} resize-y`} style={bs} placeholder="Start with a verb: Built, Led, Reduced..." />
+            <AutoTextarea value={b} rows={2} onChange={(e) => set(i, e.target.value)} className={inputCls} style={bs} placeholder="Start with a verb: Built, Led, Reduced..." />
             <button type="button" aria-label="Remove bullet" onClick={() => onChange(list.filter((_, j) => j !== i))} className="px-2 py-1 rounded-lg border text-sm" style={bs}>×</button>
           </div>
         ))}
@@ -210,7 +211,7 @@ function CoverForm({ model, setModel }) {
       <Card title="Letter" action={<button type="button" className={btn} style={bs} onClick={() => up({ paragraphs: [...model.paragraphs, ''] })}>+ Paragraph</button>}>
         {model.paragraphs.map((p, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <textarea rows={5} value={p} onChange={(e) => up({ paragraphs: model.paragraphs.map((x, j) => (j === i ? e.target.value : x)) })} className={`${inputCls} resize-y`} style={bs} />
+            <AutoTextarea rows={5} value={p} onChange={(e) => up({ paragraphs: model.paragraphs.map((x, j) => (j === i ? e.target.value : x)) })} className={inputCls} style={bs} />
             <button type="button" aria-label="Remove paragraph" onClick={() => up({ paragraphs: model.paragraphs.filter((_, j) => j !== i) })} className="px-2 py-1 rounded-lg border text-sm" style={bs}>×</button>
           </div>
         ))}
@@ -259,7 +260,7 @@ export default function ResumeEditor() {
           if (err || !row) throw new Error("We couldn't find that document.")
           const k = row.doc_type === 'cover_letter' ? 'cover' : 'resume'
           setKind(k)
-          setModelRaw(row.content || (k === 'cover' ? emptyCoverLetter() : emptyResume()))
+          setModelRaw(row.content ? (k === 'cover' ? row.content : normalizeModel(row.content)) : (k === 'cover' ? emptyCoverLetter() : emptyResume()))
           if (!row.content) {
             const loaded = await loadModel(row)
             setModelRaw(loaded.model)
