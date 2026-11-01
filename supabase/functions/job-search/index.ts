@@ -1,5 +1,10 @@
 import { corsHeaders } from '../_shared/cors.ts'
 
+declare const Deno: {
+  serve(handler: (req: Request) => Response | Promise<Response>): void
+  env: { get(name: string): string | undefined }
+}
+
 // Curated list of companies confirmed to have live public Lever postings.
 // There's no discovery endpoint for this — verified manually; re-check periodically,
 // since companies can switch ATS providers or disable their public board at any time.

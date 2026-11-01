@@ -28,10 +28,12 @@ export default function ForgotPassword() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 text-center" style={{ backgroundColor: 'var(--color-bg)' }}>
         <div className="max-w-sm">
-          <h1 className="font-heading text-xl font-semibold mb-2">Check your email</h1>
+          <h1 className="font-heading text-xl font-semibold mb-2">A little reset, coming right up.</h1>
           <p className="text-[var(--color-text-muted)]">
-            If an account exists for {email}, we sent a link to reset your password. It'll bring you
-            back here to set a new one.
+              Check your inbox for the password reset link.
+              <span className="block mt-1"> 
+                Lost in space? Your spam folder is worth a look.  
+                </span>
           </p>
           <Link to="/login" className="inline-block mt-4 text-sm underline" style={{ color: 'var(--color-accent)' }}>
             Back to log in
