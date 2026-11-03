@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, PDFString, StandardFonts, rgb } from 'pdf-lib'
 import { buildResumeDoc, buildCoverDoc } from './resumeDoc'
 
 const hex = (h) => {
@@ -43,23 +43,33 @@ async function setup(template) {
     if (cur) rows.push(cur)
     return rows
   }
-  return { pdf, reg, bold, ital, safe, wrap }
+  // A real, clickable web link over the given box.
+  const addLink = (pg, x, yBase, w, size, url) => {
+    if (!url) return
+    try {
+      const ref = pdf.context.register(pdf.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [x, yBase - 2, x + w, yBase + size], Border: [0, 0, 0], A: { Type: 'Action', S: 'URI', URI: PDFString.of(encodeURI(url)) } }))
+      pg.node.addAnnot(ref)
+    } catch { /* a bad address just stays plain text */ }
+  }
+  return { pdf, reg, bold, ital, safe, wrap, addLink }
 }
 
 // ---------- resume ----------
 
 export async function renderBuilderPdf(model, template) {
-  const { pdf, reg, bold, ital, safe, wrap } = await setup(template)
+  const { pdf, reg, bold, ital, safe, wrap, addLink } = await setup(template)
   const doc = buildResumeDoc(model, template)
   const W = 595.28, H = 841.89
   const M = template.compact ? 38 : 46
   const accent = hex(template.accent)
   const ink = rgb(0.07, 0.09, 0.15), muted = rgb(0.29, 0.33, 0.39)
   const sidebar = doc.layout === 'sidebar'
+  const split = doc.layout === 'split'
   const banner = doc.layout === 'banner'
-  const SIDE_W = 170
-  const colX = sidebar ? SIDE_W + 22 : M
+  const SIDE_W = split ? 150 : 170
+  const colX = sidebar ? SIDE_W + 22 : split ? M + SIDE_W + 22 : M
   const colW = W - colX - M
+  const linkBlue = rgb(0.11, 0.31, 0.85)
   const lead = template.compact ? 12.2 : 13.2
 
   let page = pdf.addPage([W, H])
@@ -75,6 +85,41 @@ export async function renderBuilderPdf(model, template) {
   const ensure = (need) => { if (y - need < M) newPage() }
   const text = (s, x, size, font, color) => page.drawText(s, { x, y, size, font, color })
 
+  // contact details laid out in rows; items with an address are underlined and clickable
+  const layoutContact = (items, size, font, width) => {
+    const sepW = font.widthOfTextAtSize('   |   ', size)
+    const rows = []
+    let row = [], w = 0
+    for (const it of items) {
+      const t = safe(it.text), iw = font.widthOfTextAtSize(t, size)
+      if (row.length && w + sepW + iw > width) { rows.push({ row, w }); row = []; w = 0 }
+      w += (row.length ? sepW : 0) + iw
+      row.push({ ...it, t, iw })
+    }
+    if (row.length) rows.push({ row, w })
+    return { rows, sepW }
+  }
+  const drawContact = (items, x0, width, align, size, font, color, linkColor) => {
+    const { rows, sepW } = layoutContact(items, size, font, width)
+    for (const { row, w } of rows) {
+      let x = align === 'center' ? x0 + (width - w) / 2 : x0
+      row.forEach((it, i) => {
+        if (i > 0) { text('|', x + sepW / 2 - 2, size, font, color); x += sepW }
+        text(it.t, x, size, font, it.href ? linkColor : color)
+        if (it.href) { page.drawLine({ start: { x, y: y - 1.5 }, end: { x: x + it.iw, y: y - 1.5 }, thickness: 0.5, color: linkColor }); addLink(page, x, y, it.iw, size, it.href) }
+        x += it.iw
+      })
+      y -= size + 3.5
+    }
+  }
+  const drawName = (name, size, font, color, align, x0, width, track) => {
+    if (!track) { text(name, align === 'center' ? x0 + (width - font.widthOfTextAtSize(name, size)) / 2 : x0, size, font, color); return }
+    const chars = [...name.toUpperCase()]
+    const total = chars.reduce((a, c) => a + font.widthOfTextAtSize(c, size), 0) + track * (chars.length - 1)
+    let x = align === 'center' ? x0 + (width - total) / 2 : x0
+    for (const c of chars) { text(c, x, size, font, color); x += font.widthOfTextAtSize(c, size) + track }
+  }
+
   // header
   const centered = template.align === 'center'
   const centerX = (s, size, font, width, x0) => x0 + (width - font.widthOfTextAtSize(s, size)) / 2
@@ -84,21 +129,33 @@ export async function renderBuilderPdf(model, template) {
     y = H - 40
     text(safe(doc.name), M, 23, bold, rgb(1, 1, 1))
     if (doc.headline) { y -= 17; text(safe(doc.headline), M, 11, reg, rgb(1, 1, 1)) }
-    if (doc.contact.length) { y -= 15; text(safe(doc.contact.join('   |   ')), M, 9.2, reg, rgb(1, 1, 1)) }
+    if (doc.contactItems.length) { y -= 15; drawContact(doc.contactItems, M, W - M * 2, 'left', 9.2, reg, rgb(1, 1, 1), rgb(1, 1, 1)) }
     y = H - bandH - 10
   } else if (sidebar) {
     y -= 14
     for (const r of wrap(doc.name, bold, 21, colW)) { text(r, colX, 21, bold, ink); y -= 24 }
     if (doc.headline) { text(safe(doc.headline), colX, 11, reg, muted); y -= 14 }
     y -= 2
+  } else if (split) {
+    const fullW = W - M * 2
+    y -= 16
+    if (template.rules) { page.drawLine({ start: { x: M, y: y + 12 }, end: { x: W - M, y: y + 12 }, thickness: 0.8, color: ink }) }
+    drawName(safe(doc.name), 24, reg, ink, 'center', M, fullW, template.trackName ? 6 : 0)
+    y -= 12
+    if (doc.headline) {
+      if (template.rules) page.drawLine({ start: { x: M, y: y + 3 }, end: { x: W - M, y: y + 3 }, thickness: 0.8, color: ink })
+      y -= 12
+      drawName(safe(doc.headline).toUpperCase(), 11, reg, muted, 'center', M, fullW, 1.2)
+      y -= 8
+      if (template.rules) page.drawLine({ start: { x: M, y: y + 3 }, end: { x: W - M, y: y + 3 }, thickness: 0.8, color: ink })
+    }
+    y -= 6
   } else {
     y -= 14
     const rows = wrap(doc.name, bold, 22, W - M * 2)
-    for (const r of rows) { text(r, centered ? centerX(r, 22, bold, W - M * 2, M) : M, 22, bold, ink); y -= 25 }
+    for (const r of rows) { drawName(r, 22, bold, ink, centered ? 'center' : 'left', M, W - M * 2, template.trackName ? 3 : 0); y -= 25 }
     if (doc.headline) { const h = safe(doc.headline); text(h, centered ? centerX(h, 11, reg, W - M * 2, M) : M, 11, reg, muted); y -= 15 }
-    if (doc.contact.length) {
-      for (const r of wrap(doc.contact.join('   |   '), reg, 9.5, W - M * 2)) { text(r, centered ? centerX(r, 9.5, reg, W - M * 2, M) : M, 9.5, reg, muted); y -= 13 }
-    }
+    if (doc.contactItems.length) drawContact(doc.contactItems, M, W - M * 2, centered ? 'center' : 'left', 9.5, reg, muted, linkBlue)
   }
   const mainTop = y
 
@@ -134,6 +191,16 @@ export async function renderBuilderPdf(model, template) {
       const titleRows = wrap(it.title, bold, 10.5, width - metaW - 4)
       ensure(lead + 4); y -= lead
       text(titleRows[0] || '', x, 10.5, bold, ink)
+      if (it.link && titleRows.length === 1) {
+        const tw = bold.widthOfTextAtSize(titleRows[0], 10.5)
+        const lt = ` - ${safe(it.link.text)}`
+        const lw = ital.widthOfTextAtSize(lt, 9.5)
+        if (tw + lw < width - metaW) {
+          text(lt, x + tw, 9.5, ital, linkBlue)
+          page.drawLine({ start: { x: x + tw + ital.widthOfTextAtSize(' - ', 9.5), y: y - 1.5 }, end: { x: x + tw + lw, y: y - 1.5 }, thickness: 0.5, color: linkBlue })
+          addLink(page, x + tw, y, lw, 9.5, it.link.href)
+        }
+      }
       if (it.meta) text(safe(it.meta), x + width - metaW + 6, 9, reg, muted)
       rowsOut(titleRows.slice(1), bold, 10.5, x, ink, lead)
       if (it.sub) rowsOut(wrap(it.sub, ital, 9.5, width), ital, 9.5, x, muted, 12)
@@ -147,14 +214,20 @@ export async function renderBuilderPdf(model, template) {
     }
   }
 
-  if (sidebar) {
+  if (sidebar || split) {
     // sidebar column lives on the first page only
     const mainPage = page
-    let sy = H - 46
-    const sideX = 16, sideWd = SIDE_W - 28
+    let sy = split ? mainTop - 8 : H - 46
+    const sideX = split ? M : 16, sideWd = split ? SIDE_W : SIDE_W - 28
     const sideText = (s, size, f, color) => { mainPage.drawText(s, { x: sideX, y: sy, size, font: f, color }); }
     sideText('CONTACT', 10, bold, accent); sy -= 14
-    for (const c of doc.contact) for (const r of wrap(c, reg, 9, sideWd)) { sideText(r, 9, reg, ink); sy -= 12 }
+    for (const c of doc.contactItems) {
+      for (const r of wrap(c.text, reg, 9, sideWd)) {
+        mainPage.drawText(r, { x: sideX, y: sy, size: 9, font: reg, color: c.href ? linkBlue : ink })
+        if (c.href) { const rw = reg.widthOfTextAtSize(r, 9); mainPage.drawLine({ start: { x: sideX, y: sy - 1.5 }, end: { x: sideX + rw, y: sy - 1.5 }, thickness: 0.5, color: linkBlue }); addLink(mainPage, sideX, sy, rw, 9, c.href) }
+        sy -= 12
+      }
+    }
     for (const s of doc.side) {
       sy -= 10; sideText(safe(s.heading).toUpperCase(), 10, bold, accent); sy -= 14
       for (const it of s.items) {
@@ -181,7 +254,7 @@ export async function renderBuilderPdf(model, template) {
 // ---------- cover letter ----------
 
 export async function renderCoverPdf(letter, template) {
-  const { pdf, reg, bold, safe, wrap } = await setup(template)
+  const { pdf, reg, bold, safe, wrap, addLink } = await setup(template)
   const d = buildCoverDoc(letter)
   const W = 595.28, H = 841.89, M = 62
   const accent = hex(template.accent)

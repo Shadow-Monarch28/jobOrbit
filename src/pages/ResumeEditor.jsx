@@ -1,4 +1,5 @@
 import AutoTextarea from '../components/AutoTextarea'
+import UnsavedGuard from '../components/UnsavedGuard'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -79,9 +80,9 @@ function Bullets({ list, onChange, label = 'Bullets' }) {
   )
 }
 
-function EntryShell({ index, count, onMove, onRemove, children }) {
+function EntryShell({ id, index, count, onMove, onRemove, children }) {
   return (
-    <div className="rounded-lg border p-3 flex flex-col gap-3" style={bs}>
+    <div data-entry={id} className="rounded-lg border p-3 flex flex-col gap-3" style={bs}>
       <div className="flex justify-end gap-1.5">
         <button type="button" aria-label="Move up" disabled={index === 0} onClick={() => onMove(-1)} className={btn} style={bs}>↑</button>
         <button type="button" aria-label="Move down" disabled={index === count - 1} onClick={() => onMove(1)} className={btn} style={bs}>↓</button>
@@ -127,7 +128,7 @@ function LinksEditor({ links, onChange }) {
       <div className="flex flex-col gap-2">
         {list.map((l, i) => (
           <div key={l.id} className="grid grid-cols-[1fr_2fr_auto] gap-2 items-center">
-            <input value={l.label} onChange={(e) => set(i, { label: e.target.value })} placeholder="Name, e.g. LinkedIn" aria-label="Link name" className={inputCls} style={bs} />
+            <input value={l.label} onChange={(e) => set(i, { label: e.target.value })} autoFocus={i === list.length - 1 && !l.label && !l.url && list.length > 0} placeholder="Name, e.g. LinkedIn" aria-label="Link name" className={inputCls} style={bs} />
             <input value={l.url} onChange={(e) => set(i, { url: e.target.value, label: l.label && l.label !== linkLabelOf(l.url) ? l.label : linkLabelOf(e.target.value) })} placeholder="Paste the URL" aria-label="Link URL" className={inputCls} style={bs} />
             <button type="button" aria-label="Remove link" className={btn} style={bs} onClick={() => onChange(list.filter((_, j) => j !== i))}>✕</button>
           </div>
@@ -136,6 +137,14 @@ function LinksEditor({ links, onChange }) {
       <button type="button" className={`${btn} mt-2`} style={bs} onClick={() => onChange([...list, newLink()])}>+ Add link</button>
     </div>
   )
+}
+
+// First and last name boxes over one stored name. The last word is the last name;
+// once typed, the boxes keep their own split so "Mary Ann" stays a first name.
+function splitFullName(m) {
+  if (m.firstName !== undefined && `${m.firstName} ${m.lastName || ''}`.trim() === String(m.name || '').trim()) return { first: m.firstName || '', last: m.lastName || '' }
+  const parts = String(m.name || '').trim().split(/\s+/).filter(Boolean)
+  return parts.length > 1 ? { first: parts.slice(0, -1).join(' '), last: parts[parts.length - 1] } : { first: parts[0] || '', last: '' }
 }
 
 const move = (list, i, d) => {
@@ -150,11 +159,25 @@ function ResumeForm({ model, setModel }) {
   const up = (patch) => setModel({ ...model, ...patch })
   const upContact = (patch) => up({ contact: { ...model.contact, ...patch } })
   const upList = (key, i, patch) => up({ [key]: model[key].map((x, j) => (j === i ? { ...x, ...patch } : x)) })
+  // "+ Add ..." creates the box, scrolls to it and puts the cursor in its first field
+  const [justAdded, setJustAdded] = useState(null)
+  const add = (key, factory) => { const item = factory(); up({ [key]: [...model[key], item] }); setJustAdded(item.id) }
+  useEffect(() => {
+    if (!justAdded) return
+    const el = document.querySelector(`[data-entry="${justAdded}"]`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.querySelector('input:not([type=checkbox]),textarea')?.focus({ preventScroll: true })
+    }
+    setJustAdded(null)
+  }, [justAdded])
+  const nameParts = splitFullName(model)
   return (
     <>
       <Card title="Basics">
         <div className="grid sm:grid-cols-2 gap-3">
-          <TextInput label="Full name" value={model.name} onChange={(v) => up({ name: v })} />
+          <TextInput label="First name" value={nameParts.first} onChange={(v) => up({ firstName: v, lastName: nameParts.last, name: `${v} ${nameParts.last}`.trim() })} />
+          <TextInput label="Last name" value={nameParts.last} onChange={(v) => up({ firstName: nameParts.first, lastName: v, name: `${nameParts.first} ${v}`.trim() })} />
           <TextInput label="Headline" value={model.headline} onChange={(v) => up({ headline: v })} placeholder="e.g. Data Analyst" />
           <TextInput label="Email" type="email" value={model.contact.email} onChange={(v) => upContact({ email: v })} />
           <TextInput label="Phone" value={model.contact.phone} onChange={(v) => upContact({ phone: v })} />
@@ -167,10 +190,10 @@ function ResumeForm({ model, setModel }) {
         <TextArea label="Two or three lines about you and the role you want" rows={4} value={model.summary} onChange={(v) => up({ summary: v })} />
       </Card>
 
-      <Card title="Experience" action={<button type="button" className={btn} style={bs} onClick={() => up({ experience: [...model.experience, newExperience()] })}>+ Add role</button>}>
+      <Card title="Experience" action={<button type="button" className={btn} style={bs} onClick={() => add('experience', newExperience)}>+ Add role</button>}>
         {model.experience.length === 0 && <p className="text-sm text-[var(--color-text-muted)]">No roles yet.</p>}
         {model.experience.map((e, i) => (
-          <EntryShell key={e.id} index={i} count={model.experience.length} onMove={(d) => up({ experience: move(model.experience, i, d) })} onRemove={() => up({ experience: model.experience.filter((_, j) => j !== i) })}>
+          <EntryShell key={e.id} id={e.id} index={i} count={model.experience.length} onMove={(d) => up({ experience: move(model.experience, i, d) })} onRemove={() => up({ experience: model.experience.filter((_, j) => j !== i) })}>
             <div className="grid sm:grid-cols-2 gap-3">
               <TextInput label="Job title" value={e.title} onChange={(v) => upList('experience', i, { title: v })} />
               <TextInput label="Company" value={e.org} onChange={(v) => upList('experience', i, { org: v })} />
@@ -182,28 +205,39 @@ function ResumeForm({ model, setModel }) {
         ))}
       </Card>
 
-      <Card title="Projects" action={<button type="button" className={btn} style={bs} onClick={() => up({ projects: [...model.projects, newProject()] })}>+ Add project</button>}>
+      <Card title="Projects" action={<button type="button" className={btn} style={bs} onClick={() => add('projects', newProject)}>+ Add project</button>}>
         {model.projects.length === 0 && <p className="text-sm text-[var(--color-text-muted)]">No projects yet.</p>}
         {model.projects.map((p, i) => (
-          <EntryShell key={p.id} index={i} count={model.projects.length} onMove={(d) => up({ projects: move(model.projects, i, d) })} onRemove={() => up({ projects: model.projects.filter((_, j) => j !== i) })}>
+          <EntryShell key={p.id} id={p.id} index={i} count={model.projects.length} onMove={(d) => up({ projects: move(model.projects, i, d) })} onRemove={() => up({ projects: model.projects.filter((_, j) => j !== i) })}>
             <div className="grid sm:grid-cols-2 gap-3">
               <TextInput label="Project name" value={p.name} onChange={(v) => upList('projects', i, { name: v })} />
-              <TextInput label="Link" value={p.link} onChange={(v) => upList('projects', i, { link: v })} />
+              <TextInput label="Link (shown as a clickable 'Link to project')" value={p.link} onChange={(v) => upList('projects', i, { link: v })} placeholder="github.com/you/project" />
+              <TextInput label="Role / stack (optional)" value={p.role} onChange={(v) => upList('projects', i, { role: v })} placeholder="e.g. Data Analyst" />
+              <TextInput label="Period (optional)" value={p.period} onChange={(v) => upList('projects', i, { period: v })} placeholder="Jun 2026 - Jul 2026" />
             </div>
             <Bullets list={p.bullets} onChange={(b) => upList('projects', i, { bullets: b })} />
           </EntryShell>
         ))}
       </Card>
 
-      <Card title="Education" action={<button type="button" className={btn} style={bs} onClick={() => up({ education: [...model.education, newEducation()] })}>+ Add education</button>}>
+      <Card title="Education" action={<button type="button" className={btn} style={bs} onClick={() => add('education', newEducation)}>+ Add education</button>}>
         {model.education.length === 0 && <p className="text-sm text-[var(--color-text-muted)]">No education yet.</p>}
         {model.education.map((e, i) => (
-          <EntryShell key={e.id} index={i} count={model.education.length} onMove={(d) => up({ education: move(model.education, i, d) })} onRemove={() => up({ education: model.education.filter((_, j) => j !== i) })}>
+          <EntryShell key={e.id} id={e.id} index={i} count={model.education.length} onMove={(d) => up({ education: move(model.education, i, d) })} onRemove={() => up({ education: model.education.filter((_, j) => j !== i) })}>
             <div className="grid sm:grid-cols-2 gap-3">
-              <TextInput label="Degree" value={e.degree} onChange={(v) => upList('education', i, { degree: v })} />
-              <TextInput label="School" value={e.school} onChange={(v) => upList('education', i, { school: v })} />
+              <Field label="Level">
+                <select value={e.level || 'college'} onChange={(ev) => upList('education', i, { level: ev.target.value })} className={inputCls} style={bs}>
+                  <option value="college">College / University</option>
+                  <option value="school">School (10th, 12th, ...)</option>
+                </select>
+              </Field>
+              {e.level === 'school'
+                ? <TextInput label="Class / stream" value={e.degree} onChange={(v) => upList('education', i, { degree: v })} placeholder="12th (Commerce)" />
+                : <TextInput label="Degree" value={e.degree} onChange={(v) => upList('education', i, { degree: v })} placeholder="Bachelor of Computer Applications" />}
+              <TextInput label={e.level === 'school' ? 'School' : 'College / University'} value={e.school} onChange={(v) => upList('education', i, { school: v })} />
               <TextInput label="Location" value={e.location} onChange={(v) => upList('education', i, { location: v })} />
               <PeriodInputs item={e} onChange={(patch) => upList('education', i, { ...patch, year: '' })} currentLabel="I'm still studying here" />
+              <TextInput label={e.level === 'school' ? 'Percentage' : 'GPA / CGPA / Percentage (optional)'} value={e.grade} onChange={(v) => upList('education', i, { grade: v })} placeholder={e.level === 'school' ? '80%' : '8.4 CGPA or 67%'} />
             </div>
             <TextInput label="Details (optional)" value={e.detail} onChange={(v) => upList('education', i, { detail: v })} />
           </EntryShell>
@@ -221,7 +255,7 @@ function ResumeForm({ model, setModel }) {
       {model.extra.length > 0 && (
         <Card title="Other sections">
           {model.extra.map((x, i) => (
-            <EntryShell key={x.id} index={i} count={model.extra.length} onMove={(d) => up({ extra: move(model.extra, i, d) })} onRemove={() => up({ extra: model.extra.filter((_, j) => j !== i) })}>
+            <EntryShell key={x.id} id={x.id} index={i} count={model.extra.length} onMove={(d) => up({ extra: move(model.extra, i, d) })} onRemove={() => up({ extra: model.extra.filter((_, j) => j !== i) })}>
               <TextInput label="Heading" value={x.heading} onChange={(v) => upList('extra', i, { heading: v })} />
               <Bullets label="Lines" list={x.lines} onChange={(l) => upList('extra', i, { lines: l })} />
             </EntryShell>
@@ -234,12 +268,14 @@ function ResumeForm({ model, setModel }) {
 
 function CoverForm({ model, setModel }) {
   const up = (patch) => setModel({ ...model, ...patch })
+  const coverName = splitFullName(model)
   const upContact = (patch) => up({ contact: { ...model.contact, ...patch } })
   return (
     <>
       <Card title="You">
         <div className="grid sm:grid-cols-2 gap-3">
-          <TextInput label="Full name" value={model.name} onChange={(v) => up({ name: v })} />
+          <TextInput label="First name" value={coverName.first} onChange={(v) => up({ firstName: v, lastName: coverName.last, name: `${v} ${coverName.last}`.trim() })} />
+          <TextInput label="Last name" value={coverName.last} onChange={(v) => up({ firstName: coverName.first, lastName: v, name: `${coverName.first} ${v}`.trim() })} />
           <TextInput label="Email" value={model.contact.email} onChange={(v) => upContact({ email: v })} />
           <TextInput label="Phone" value={model.contact.phone} onChange={(v) => upContact({ phone: v })} />
           <TextInput label="Location" value={model.contact.location} onChange={(v) => upContact({ location: v })} />
@@ -389,8 +425,8 @@ export default function ResumeEditor() {
 
   const ats = useMemo(() => (kind === 'resume' && model && job ? evaluateAts({ model, job }) : null), [kind, model, job])
 
-  async function save() {
-    if (!model) return
+  async function save(opts = {}) {
+    if (!model) return false
     setBusy('save')
     setError('')
     try {
@@ -407,9 +443,11 @@ export default function ResumeEditor() {
       setTitle(cleanTitle)
       setDirty(false)
       setNotice(makeDefault && kind === 'resume' ? 'Saved, and set as your default resume.' : 'Saved to My Documents.')
-      if (!docId) navigate(`/resume-builder/edit/${row.id}`, { replace: true })
+      if (!docId && !opts.leaving) navigate(`/resume-builder/edit/${row.id}`, { replace: true })
+      return true
     } catch (e) {
       setError(e.message || "Couldn't save. Please try again.")
+      return false
     } finally {
       setBusy('')
     }
@@ -471,8 +509,9 @@ export default function ResumeEditor() {
 
   return (
     <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
+      <UnsavedGuard dirty={dirty} saving={busy === 'save'} noun={kind === 'cover' ? 'cover letter' : 'resume'} onSave={() => save({ leaving: true })} />
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <Link to="/resume-builder" className="text-sm underline" style={{ color: 'var(--color-accent)' }} onClick={(e) => { if (dirty && !window.confirm('You have unsaved changes. Leave without saving?')) e.preventDefault() }}>← My Documents</Link>
+        <Link to="/resume-builder" className="text-sm underline" style={{ color: 'var(--color-accent)' }}>← My Documents</Link>
         <input value={title} onChange={(e) => { setTitle(e.target.value); setDirty(true) }} aria-label="Document name" placeholder="Document name" className="flex-1 min-w-[180px] text-base font-heading font-semibold px-3 py-1.5 rounded-lg border bg-transparent" style={bs} />
         <select value={templateId} onChange={(e) => { setTemplateId(e.target.value); setDirty(true) }} aria-label="Template" className="text-sm px-2.5 py-2 rounded-lg border bg-transparent" style={bs}>
           {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -485,7 +524,7 @@ export default function ResumeEditor() {
           </label>
         )}
         <button onClick={download} disabled={!!busy} className={btn} style={bs}>{busy === 'pdf' ? 'Building...' : 'Download PDF'}</button>
-        <button onClick={save} disabled={!!busy} className="px-4 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
+        <button onClick={() => save()} disabled={!!busy} className="px-4 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
           {busy === 'save' ? 'Saving...' : dirty ? 'Save' : 'Saved'}
         </button>
       </div>

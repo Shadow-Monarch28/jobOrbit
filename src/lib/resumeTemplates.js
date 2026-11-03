@@ -16,7 +16,8 @@ const ORDER = {
   skillsFirst: ['summary', 'skills', 'experience', 'projects', 'education', 'certifications', 'extra'],
 }
 
-// layout: 'single' | 'sidebar' (left column) | 'banner' (coloured name band)
+// layout: 'single' | 'sidebar' (tinted left column) | 'split' (centred header, plain side column) | 'banner' (coloured name band)
+// extras: trackName (wide letter-spaced name), rules (lines above and below the header), sideTint:false
 // heading: 'rule' | 'plain' | 'bar' | 'accent' | 'small'
 export const RESUME_TEMPLATES = [
   { id: 'classic', name: 'Classic Professional', blurb: 'Centred header, serif type, thin rules.', font: 'serif', accent: '#1f2937', layout: 'single', heading: 'rule', align: 'center', order: 'standard',
@@ -61,6 +62,18 @@ export const RESUME_TEMPLATES = [
     tags: { vibe: ['Modern', 'Minimal'], level: ['Early Career', 'Mid-Level'], industry: ['Data & Analytics', 'Tech & Engineering'], format: ['Hybrid', 'One-page'] } },
   { id: 'hrpeople', name: 'People & HR', blurb: 'Soft green sidebar for people and operations roles.', font: 'sans', accent: '#15803d', layout: 'sidebar', heading: 'plain', align: 'left', order: 'standard',
     tags: { vibe: ['Modern', 'Classic'], level: ['Early Career', 'Mid-Level'], industry: ['Operations & HR', 'General'], format: ['Two-column', 'One-page'] } },
+  { id: 'atsmain', name: 'ATS Straight Shooter', blurb: 'Centred serif header, ruled headings, dates on the right. Built for applicant trackers.', font: 'serif', accent: '#111827', layout: 'single', heading: 'rule', align: 'center', order: 'standard', compact: true,
+    tags: { vibe: ['Classic', 'Minimal'], level: ['Early Career', 'Mid-Level', 'Career Changer'], industry: ['Data & Analytics', 'Business & Finance', 'Operations & HR', 'General'], format: ['Chronological', 'One-page'] } },
+  { id: 'splitrule', name: 'Tracked Split', blurb: 'Wide-spaced name between thin rules, with a quiet side column.', font: 'sans', accent: '#111827', layout: 'split', heading: 'plain', align: 'center', order: 'standard', trackName: true, rules: true,
+    tags: { vibe: ['Minimal', 'Elegant'], level: ['Early Career', 'Career Changer'], industry: ['Data & Analytics', 'Operations & HR', 'General'], format: ['Two-column', 'One-page'] } },
+  { id: 'noir', name: 'Noir Banner', blurb: 'Charcoal name band with serif-style ruled sections.', font: 'sans', accent: '#27272a', layout: 'banner', heading: 'rule', align: 'left', order: 'standard',
+    tags: { vibe: ['Bold', 'Modern'], level: ['Early Career', 'Mid-Level'], industry: ['Operations & HR', 'Sales & Customer', 'General'], format: ['Chronological', 'One-page'] } },
+  { id: 'analystledger', name: 'Analyst Ledger', blurb: 'Skills first, project-heavy, with blue ruled headings.', font: 'sans', accent: '#1d4ed8', layout: 'single', heading: 'accent', align: 'left', order: 'skillsFirst',
+    tags: { vibe: ['Modern', 'Minimal'], level: ['Early Career', 'Career Changer'], industry: ['Data & Analytics', 'Tech & Engineering'], format: ['Hybrid', 'One-page'] } },
+  { id: 'hrpartner', name: 'HR Business Partner', blurb: 'Slate side column for contact, skills and credentials.', font: 'sans', accent: '#334155', layout: 'sidebar', heading: 'rule', align: 'left', order: 'standard',
+    tags: { vibe: ['Classic', 'Modern'], level: ['Mid-Level', 'Senior / Executive'], industry: ['Operations & HR', 'Business & Finance'], format: ['Two-column', 'One-page'] } },
+  { id: 'analystcv', name: 'Analyst Long-form CV', blurb: 'Roomy CV for portfolio-led analysts with many projects.', font: 'serif', accent: '#0f766e', layout: 'single', heading: 'small', align: 'left', order: 'standard',
+    tags: { vibe: ['Elegant', 'Classic'], level: ['Mid-Level', 'Senior / Executive'], industry: ['Data & Analytics', 'Tech & Engineering'], format: ['Long-form CV', 'Chronological'] } },
 ]
 
 export const COVER_TEMPLATES = [
@@ -94,6 +107,12 @@ export const COVER_TEMPLATES = [
     tags: { vibe: ['Modern', 'Minimal'], level: ['Early Career', 'Mid-Level'], industry: ['Sales & Customer', 'Operations & HR'], format: ['One-page'] } },
   { id: 'letter-academic', kind: 'cover', name: 'Academic Letter', blurb: 'Formal maroon serif, long-form friendly.', font: 'serif', accent: '#7f1d1d', layout: 'single', align: 'left',
     tags: { vibe: ['Classic', 'Elegant'], level: ['Senior / Executive', 'Career Changer'], industry: ['Healthcare', 'General'], format: ['Long-form CV'] } },
+  { id: 'letter-ats', kind: 'cover', name: 'ATS Plain Letter', blurb: 'Serif, no frills, reads cleanly in any system.', font: 'serif', accent: '#111827', layout: 'single', align: 'left',
+    tags: { vibe: ['Classic', 'Minimal'], level: ['Early Career', 'Mid-Level', 'Career Changer'], industry: ['Data & Analytics', 'General'], format: ['One-page'] } },
+  { id: 'letter-noir', kind: 'cover', name: 'Noir Letter', blurb: 'Charcoal band to match the Noir resume.', font: 'sans', accent: '#27272a', layout: 'banner', align: 'left',
+    tags: { vibe: ['Bold', 'Modern'], level: ['Early Career', 'Mid-Level'], industry: ['Operations & HR', 'Sales & Customer'], format: ['One-page'] } },
+  { id: 'letter-ledger', kind: 'cover', name: 'Analyst Letter', blurb: 'Blue rule and tidy sans for analytics applications.', font: 'sans', accent: '#1d4ed8', layout: 'single', align: 'left',
+    tags: { vibe: ['Modern', 'Minimal'], level: ['Early Career', 'Career Changer'], industry: ['Data & Analytics', 'Tech & Engineering'], format: ['One-page'] } },
 ]
 
 export const getResumeTemplate = (id) => RESUME_TEMPLATES.find((t) => t.id === id) || RESUME_TEMPLATES[1]

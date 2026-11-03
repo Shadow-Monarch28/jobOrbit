@@ -7,6 +7,16 @@ import { buildResumeDoc, buildCoverDoc, FONT_STACK } from '../lib/resumeDoc'
 const PAGE_W = 793.7 // 210mm at 96dpi
 const PAGE_H = 1122.5 // 297mm
 
+// Contact details; anything with an address is a real, clickable link.
+function ContactRow({ items, sep = '  |  ', color, block }) {
+  return items.map((c, i) => (
+    <span key={i} style={block ? { display: 'block' } : undefined}>
+      {i > 0 && !block ? sep : ''}
+      {c.href ? <a href={c.href} target="_blank" rel="noopener noreferrer" style={{ color: color || 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' }}>{c.text}</a> : c.text}
+    </span>
+  ))
+}
+
 function Heading({ text, t }) {
   const base = { fontWeight: 700, textTransform: 'uppercase', fontSize: '10.5pt', letterSpacing: '0.04em', marginTop: '12pt', marginBottom: '5pt' }
   if (t.heading === 'rule') return <div style={{ ...base, borderBottom: '0.8pt solid #6b7280', paddingBottom: '2pt' }}>{text}</div>
@@ -27,7 +37,7 @@ function Item({ item, t, inSide }) {
   return (
     <div style={{ marginBottom: t.compact ? '5pt' : '7pt' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8pt', alignItems: 'baseline' }}>
-        <strong style={{ fontSize: '10.5pt' }}>{item.title}</strong>
+        <span><strong style={{ fontSize: '10.5pt' }}>{item.title}</strong>{item.link && <> <span style={{ color: '#6b7280' }}>-</span> <a href={item.link.href} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', fontStyle: 'italic', textDecoration: 'underline', fontSize: '9.5pt' }}>{item.link.text}</a></>}</span>
         {item.meta && <span style={{ fontSize: '9pt', color: '#4b5563', whiteSpace: 'nowrap' }}>{item.meta}</span>}
       </div>
       {item.sub && <div style={{ fontStyle: 'italic', color: '#4b5563', fontSize: '9.5pt' }}>{item.sub}</div>}
@@ -40,12 +50,14 @@ function ResumeSheet({ model, template: t }) {
   const doc = buildResumeDoc(model, t)
   const banner = doc.layout === 'banner'
   const sidebar = doc.layout === 'sidebar'
-  const center = t.align === 'center'
+  const split = doc.layout === 'split'
+  const center = t.align === 'center' || split
+  const onDark = banner
   const header = (
     <div style={{ textAlign: center ? 'center' : 'left', ...(banner ? { background: t.accent, color: '#fff', margin: '-14mm -14mm 6mm', padding: '10mm 14mm 6mm' } : { marginBottom: '2pt' }) }}>
-      <div style={{ fontSize: '22pt', fontWeight: 700, lineHeight: 1.15 }}>{doc.name}</div>
-      {doc.headline && <div style={{ fontSize: '11pt', marginTop: '2pt', color: banner ? 'rgba(255,255,255,.9)' : '#4b5563' }}>{doc.headline}</div>}
-      {!sidebar && doc.contact.length > 0 && <div style={{ fontSize: '9.5pt', marginTop: '4pt', color: banner ? 'rgba(255,255,255,.9)' : '#4b5563' }}>{doc.contact.join('  |  ')}</div>}
+      <div style={{ fontSize: t.trackName ? '24pt' : '22pt', fontWeight: t.trackName ? 400 : 700, lineHeight: 1.15, letterSpacing: t.trackName ? '0.22em' : undefined, textTransform: t.trackName ? 'uppercase' : undefined, ...(t.rules ? { borderTop: '0.8pt solid #111827', paddingTop: '6pt' } : {}) }}>{doc.name}</div>
+      {doc.headline && <div style={{ fontSize: '11pt', marginTop: t.rules ? '6pt' : '2pt', color: onDark ? 'rgba(255,255,255,.9)' : '#4b5563', ...(t.rules ? { borderTop: '0.8pt solid #111827', borderBottom: '0.8pt solid #111827', padding: '5pt 0', textTransform: 'uppercase', letterSpacing: '0.06em' } : {}) }}>{doc.headline}</div>}
+      {!sidebar && !split && doc.contactItems.length > 0 && <div style={{ fontSize: '9.5pt', marginTop: '4pt', color: onDark ? 'rgba(255,255,255,.9)' : '#4b5563' }}><ContactRow items={doc.contactItems} color={onDark ? '#fff' : '#1d4ed8'} /></div>}
     </div>
   )
   const render = (list, inSide) => list.map((s, i) => (
@@ -57,13 +69,28 @@ function ResumeSheet({ model, template: t }) {
   if (sidebar) {
     return (
       <div style={{ display: 'flex', minHeight: `${PAGE_H}px`, margin: '-14mm', }}>
-        <aside style={{ width: '62mm', flexShrink: 0, background: `color-mix(in srgb, ${t.accent} 11%, #ffffff)`, padding: '14mm 6mm', fontSize: '9.5pt' }}>
+        <aside style={{ width: '62mm', flexShrink: 0, background: t.sideTint === false ? '#f3f4f6' : `color-mix(in srgb, ${t.accent} 11%, #ffffff)`, padding: '14mm 6mm', fontSize: '9.5pt' }}>
           <div style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '10.5pt', color: t.accent, marginBottom: '4pt' }}>Contact</div>
-          <div style={{ display: 'grid', gap: '2pt', wordBreak: 'break-word' }}>{doc.contact.map((c, i) => <div key={i}>{c}</div>)}</div>
+          <div style={{ display: 'grid', gap: '2pt', wordBreak: 'break-word' }}><ContactRow items={doc.contactItems} block color={t.accent} /></div>
           {render(doc.side, true)}
         </aside>
         <div style={{ flex: 1, padding: '14mm 10mm 14mm 8mm' }}>{header}{render(doc.main, false)}</div>
       </div>
+    )
+  }
+  if (split) {
+    return (
+      <>
+        {header}
+        <div style={{ display: 'flex', gap: '8mm', marginTop: '6pt' }}>
+          <aside style={{ width: '52mm', flexShrink: 0, fontSize: '9.5pt' }}>
+            <Heading text="Contact" t={t} />
+            <div style={{ display: 'grid', gap: '2pt', wordBreak: 'break-word' }}><ContactRow items={doc.contactItems} block color="#1d4ed8" /></div>
+            {render(doc.side, true)}
+          </aside>
+          <div style={{ flex: 1, minWidth: 0 }}>{render(doc.main, false)}</div>
+        </div>
+      </>
     )
   }
   return <>{header}{render(doc.main, false)}</>
@@ -76,7 +103,7 @@ function CoverSheet({ letter, template: t }) {
     <>
       <div style={banner ? { background: t.accent, color: '#fff', margin: '-14mm -14mm 8mm', padding: '10mm 14mm 6mm' } : { borderBottom: `1.2pt solid ${t.accent}`, paddingBottom: '6pt', marginBottom: '14pt' }}>
         <div style={{ fontSize: '20pt', fontWeight: 700 }}>{d.name}</div>
-        {d.contact.length > 0 && <div style={{ fontSize: '9.5pt', marginTop: '3pt', color: banner ? 'rgba(255,255,255,.9)' : '#4b5563' }}>{d.contact.join('  |  ')}</div>}
+        {d.contactItems.length > 0 && <div style={{ fontSize: '9.5pt', marginTop: '3pt', color: banner ? 'rgba(255,255,255,.9)' : '#4b5563' }}><ContactRow items={d.contactItems} color={banner ? '#fff' : '#1d4ed8'} /></div>}
       </div>
       {d.date && <div style={{ marginBottom: '10pt' }}>{d.date}</div>}
       {d.recipientLines.length > 0 && <div style={{ marginBottom: '10pt' }}>{d.recipientLines.map((l, i) => <div key={i}>{l}</div>)}</div>}

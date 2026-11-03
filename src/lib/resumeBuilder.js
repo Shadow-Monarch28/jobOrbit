@@ -205,7 +205,7 @@ function splitColumns(chunks) {
   const yMax = Math.max(...chunks.map((c) => c.y))
   const yMin = Math.min(...chunks.map((c) => c.y))
   // A banner (usually the name) that runs across both columns at the top is read first.
-  const crossing = chunks.filter((c) => c.x < gutter && c.x + c.w > gutter && c.y >= yMax - (yMax - yMin) * 0.3)
+  const crossing = chunks.filter((c) => c.x < gutter - 6 && c.x + c.w > gutter + 6 && c.y >= yMax - (yMax - yMin) * 0.3)
   const bandBottom = crossing.length ? Math.min(...crossing.map((c) => c.y)) - 2.5 : Infinity
   const band = chunks.filter((c) => c.y >= bandBottom)
   const rest = chunks.filter((c) => c.y < bandBottom)
@@ -266,6 +266,18 @@ function isHeading(line, bodySize, headSize = 0) {
   return caps || (bigger && !/[.,;]$/.test(t))
 }
 
+// "CONTACT PROFILE" or "About Experience": two column headings that share one line.
+function splitDoubleHeading(raw) {
+  const words = raw.trim().split(/\s+/)
+  if (words.length < 2 || words.length > 6) return null
+  for (let k = 1; k < words.length; k++) {
+    const a = words.slice(0, k).join(' ')
+    const b = words.slice(k).join(' ')
+    if (KNOWN_HEADING.test(a) && KNOWN_HEADING.test(b)) return [a, b]
+  }
+  return null
+}
+
 export function parseSections(lines) {
   const body = bodySizeOf(lines)
   const headSize = headingSizeOf(lines)
@@ -281,7 +293,12 @@ export function parseSections(lines) {
     // Until a real section heading has appeared, the first few lines under the name
     // (a job title, tagline, contact line) are header text, never headings.
     const guarded = !seenKnown && !known && i <= 3
-    if (!guarded && isHeading(line, body, headSize)) {
+    const pair = !known && raw.length <= 50 && !BULLET_RE.test(line.text) ? splitDoubleHeading(raw) : null
+    if (!guarded && pair) {
+      seenKnown = true
+      current = { heading: cleanHeading(pair[0]), lines: [] }
+      sections.push(current, { heading: cleanHeading(pair[1]), lines: [] })
+    } else if (!guarded && isHeading(line, body, headSize)) {
       if (known) seenKnown = true
       current = { heading: cleanHeading(line.text.trim().replace(/:$/, '')), lines: [] }
       sections.push(current)
@@ -310,7 +327,7 @@ export function splitOutsideParens(text) {
 export function splitSkillItems(bodyLines) {
   const items = []
   for (const raw of bodyLines) {
-    const text = raw.replace(BULLET_RE, '')
+    const text = raw.replace(BULLET_RE, '').replace(/^\d{1,2}[.)]\s+/, '')
     // A line can hold several labelled groups: "Languages: SQL, Python | Tools: Excel".
     // Split into groups first, then strip each group's own "Label:" prefix.
     for (const segment of text.split(/[|;•·\u2022]|\s{3,}/)) {

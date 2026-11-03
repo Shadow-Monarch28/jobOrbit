@@ -25,7 +25,7 @@ const STEPS = [
     title: 'Resume Forge',
     headline: 'Hammer Out Resumes So Sharp the Robots Swipe Right.',
     blurb:
-      'Pick from 21 resume and 15 cover letter templates, import an existing resume to edit it, or tailor a new one to a saved job. Download as PDF and set any resume as your default.',
+      'Pick from 27 resume and 18 cover letter templates, import an existing resume to edit it, or tailor a new one to a saved job. Download as PDF and set any resume as your default.',
     to: '/resume-builder',
     cta: 'Fire Up the Forge',
   },

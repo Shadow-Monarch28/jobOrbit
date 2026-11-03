@@ -4,6 +4,7 @@
 --    (email admin@joborbit.com, your password, tick "Auto Confirm User").
 -- 2) Run this script once. 3) Sign out and back in as that user.
 -- app_metadata can only be changed here, never by a user themselves.
+-- Shortcut: supabase/admin.sql does steps 1 and 2 in one go (demo password).
 update auth.users
 set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
 where email = 'admin@joborbit.com';
