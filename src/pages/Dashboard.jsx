@@ -271,7 +271,7 @@ export default function Dashboard() {
           <p className="font-heading text-lg font-medium">Let's Find Your Perfect Fit.</p>
           <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
             No resume, no matchmaking magic. Set a default resume in{' '}
-            <PillLink to="/account#resume">Resume Dock</PillLink>{' '}
+            <PillLink to="/resume-builder">Resume Forge</PillLink>{' '}
             to see which jobs are giving career chemistry.
           </p>
         </div>

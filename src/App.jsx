@@ -47,7 +47,7 @@ export default function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/search" element={<Search />} />
               <Route path="/saved-jobs" element={<Resume mode="saved" />} />
-              <Route path="/resume" element={<Navigate to="/account#resume" replace />} />
+              <Route path="/resume" element={<Navigate to="/resume-builder" replace />} />
               <Route path="/jobs/:id" element={<JobDetail />} />
               <Route path="/tracker" element={<Tracker />} />
               <Route path="/interview/:roleId" element={<Interview />} />

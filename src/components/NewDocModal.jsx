@@ -14,6 +14,8 @@ export default function NewDocModal({ kind = 'resume', initialTemplateId, initia
   const [jobs, setJobs] = useState([])
   const [resumeId, setResumeId] = useState('')
   const [jobKey, setJobKey] = useState('')
+  const [jobSource, setJobSource] = useState('saved') // 'saved' | 'paste'
+  const [pasted, setPasted] = useState({ title: '', company: '', description: '' })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,14 +38,17 @@ export default function NewDocModal({ kind = 'resume', initialTemplateId, initia
 
   const needsResume = mode === 'resume' || mode === 'tailor' || (kind === 'cover' && mode === 'tailor')
   const needsJob = mode === 'tailor'
-  const disabled = (needsResume && !resumeId && kind === 'resume') || (needsJob && !jobKey)
+  const usePaste = needsJob && (jobSource === 'paste' || (!loading && jobs.length === 0))
+  const disabled = (needsResume && !resumeId && kind === 'resume') || (needsJob && (usePaste ? pasted.description.trim().length < 40 : !jobKey))
 
   const options = kind === 'cover'
     ? [['blank', 'Start from a blank letter'], ['tailor', 'Draft it for a saved job']]
     : [['blank', 'Start from scratch'], ['resume', 'Start from one of my resumes'], ['tailor', 'Tailor one of my resumes to a saved job']]
 
   function start() {
-    const job = jobs.find((j) => j.key === jobKey)?.job ?? null
+    const job = usePaste
+      ? { id: 'pasted', title: pasted.title.trim() || 'Pasted role', company: pasted.company.trim(), description: pasted.description.trim(), source: 'pasted' }
+      : jobs.find((j) => j.key === jobKey)?.job ?? null
     onStart({ kind, templateId, mode, resumeId: needsResume ? resumeId : '', job: needsJob ? job : null })
   }
 
@@ -86,17 +91,30 @@ export default function NewDocModal({ kind = 'resume', initialTemplateId, initia
         )}
 
         {!loading && mode === 'tailor' && (
-          jobs.length === 0 ? (
-            <p className="text-xs mt-3" style={{ color: 'var(--color-warning)' }}>Save or apply to a job in Discover first, then come back to tailor.</p>
-          ) : (
-            <>
-              <label className="block text-sm mt-4 mb-1 text-[var(--color-text-muted)]">Job</label>
-              <select value={jobKey} onChange={(e) => setJobKey(e.target.value)} className={field} style={bs}>
-                {jobs.map((j) => <option key={j.key} value={j.key}>{j.job.title} · {j.job.company}</option>)}
-              </select>
-              <p className="text-xs text-[var(--color-text-muted)] mt-2 leading-relaxed">Orbit Mentor rewrites the summary and bullets using the job's wording. It only uses facts already in your resume.</p>
-            </>
-          )
+          <>
+            <div className="flex gap-4 mt-4 text-sm">
+              <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="jobsrc" checked={!usePaste} disabled={jobs.length === 0} onChange={() => setJobSource('saved')} style={{ accentColor: 'var(--color-accent)' }} />A saved job</label>
+              <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="jobsrc" checked={usePaste} onChange={() => setJobSource('paste')} style={{ accentColor: 'var(--color-accent)' }} />Paste a job description</label>
+            </div>
+            {usePaste ? (
+              <>
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <input value={pasted.title} onChange={(e) => setPasted({ ...pasted, title: e.target.value })} placeholder="Job title (optional)" aria-label="Job title" className={field} style={bs} />
+                  <input value={pasted.company} onChange={(e) => setPasted({ ...pasted, company: e.target.value })} placeholder="Company (optional)" aria-label="Company" className={field} style={bs} />
+                </div>
+                <textarea value={pasted.description} onChange={(e) => setPasted({ ...pasted, description: e.target.value })} rows={7} placeholder="Paste the job description from the company's site, LinkedIn, Naukri or anywhere else..." aria-label="Job description" className={`${field} mt-2`} style={bs} />
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{pasted.description.trim().length < 40 ? 'Paste at least a few lines so there is something to tailor to.' : 'Looks good.'}</p>
+              </>
+            ) : (
+              <>
+                <label className="block text-sm mt-3 mb-1 text-[var(--color-text-muted)]">Job</label>
+                <select value={jobKey} onChange={(e) => setJobKey(e.target.value)} className={field} style={bs}>
+                  {jobs.map((j) => <option key={j.key} value={j.key}>{j.job.title} · {j.job.company}</option>)}
+                </select>
+              </>
+            )}
+            <p className="text-xs text-[var(--color-text-muted)] mt-2 leading-relaxed">Orbit Mentor rewrites the summary and bullets using the job's wording. It only uses facts already in your resume.</p>
+          </>
         )}
 
         <div className="flex justify-end gap-2 mt-6">

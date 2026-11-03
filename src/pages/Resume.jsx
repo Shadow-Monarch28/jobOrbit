@@ -589,7 +589,7 @@ export default function Resume({ mode = 'resume' }) {
         default resume powers personalized job matches across the app.
       </p>
       <p className="text-sm text-[var(--color-text-muted)] -mt-3 mb-5 leading-relaxed">
-        Starting from scratch? Head to <PillLink to="/resume-builder">Resume Builder</PillLink> to craft a
+        Starting from scratch? Head to <PillLink to="/resume-builder">Resume Forge</PillLink> to craft a
         resume that makes recruiters stop scrolling, score it against any saved job, and make it your default.
       </p>
 

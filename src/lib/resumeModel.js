@@ -1,7 +1,9 @@
 // The structured resume / cover-letter model used by the Resume Builder,
 // plus import (text -> model), export (model -> plain text) and the
 // deterministic "tailor to a job" fallback.
-import { parseSections, splitSkillItems, cleanHeading } from './resumeBuilder'
+import { parseSections, splitSkillItems, cleanHeading, classifyHeading, despaceText } from './resumeBuilder'
+import { normalizeLinks } from './resumeLinks'
+import { splitPeriod, experiencePeriod, educationPeriod } from './resumeDates'
 import { SKILL_SUGGESTIONS } from './data/skills'
 import { getJobRequiredSkills } from './matchingEngine'
 
@@ -19,8 +21,8 @@ export function emptyResume(over = {}) {
   }
 }
 
-export const newExperience = () => ({ id: uid(), title: '', org: '', location: '', start: '', end: '', bullets: [''] })
-export const newEducation = () => ({ id: uid(), degree: '', school: '', location: '', year: '', detail: '' })
+export const newExperience = () => ({ id: uid(), title: '', org: '', location: '', start: '', end: '', current: false, bullets: [''] })
+export const newEducation = () => ({ id: uid(), degree: '', school: '', location: '', start: '', end: '', year: '', detail: '' })
 export const newProject = () => ({ id: uid(), name: '', link: '', bullets: [''] })
 
 export function emptyCoverLetter(over = {}) {
@@ -59,7 +61,8 @@ function splitHeader(text) {
     .split(/\s[|·•–—@]\s|\s\|\s|\s+at\s+|,\s+(?=[A-Z])/)
     .map((p) => p.replace(/[()|]/g, ' ').replace(/\s+/g, ' ').trim())
     .filter(Boolean)
-  return { title: pieces[0] || '', org: pieces[1] || '', location: pieces[2] || '', start, end }
+  const current = /^(present|current|now)$/i.test(end)
+  return { title: pieces[0] || '', org: pieces[1] || '', location: pieces[2] || '', start, end: current ? '' : end, current }
 }
 
 function parseExperience(lines) {
@@ -121,10 +124,10 @@ function parseEducation(lines) {
     const hasSchool = SCHOOL.test(line)
     const startsNew = !cur || ((hasDegree && cur.degree) || (hasSchool && cur.school && !hasDegree))
     if (startsNew) {
-      cur = { id: uid(), degree: '', school: '', location: '', year: '', detail: '' }
+      cur = { id: uid(), degree: '', school: '', location: '', start: '', end: '', year: '', detail: '' }
       entries.push(cur)
     }
-    if (year && !cur.year) cur.year = year
+    if (year && !cur.year) { cur.year = year; const p = splitPeriod(year); cur.start = p.start; cur.end = p.end }
     const clean = line.replace(year, '').replace(/[()|,–—-]+\s*$/g, '').trim()
     if (hasDegree && !cur.degree) cur.degree = clean
     else if (hasSchool && !cur.school) cur.school = clean
@@ -222,9 +225,10 @@ function pullContact(line) {
 export function repairSections(sectionsIn, header) {
   const sections = sectionsIn.map((s) => ({ ...s, lines: [...s.lines] }))
   const is = (s, re) => re.test(s.heading.toLowerCase())
+  const kindIs = (s, k) => classifyHeading(s.heading) === k
   const kept = []
   for (const s of sections) {
-    if (is(s, /^(contact|personal)( details| information)?$/)) header.push(...s.lines)
+    if (kindIs(s, 'contact')) header.push(...s.lines)
     else kept.push(s)
   }
   // Contact details that ended up inside a section (a sidebar read as part of the
@@ -239,16 +243,16 @@ export function repairSections(sectionsIn, header) {
     s.lines = stay
   }
   const find = (re) => [...kept].reverse().find((s) => is(s, re))
-  const work = find(/experience|employment|internship/) || find(/project/)
-  let skills = find(/skill|competenc|technolog/)
+  const work = [...kept].reverse().find((s) => kindIs(s, 'experience')) || [...kept].reverse().find((s) => kindIs(s, 'projects'))
+  let skills = [...kept].reverse().find((s) => kindIs(s, 'skills'))
   const strayWork = []
   const strayTools = []
   for (const s of kept) {
-    if (is(s, /skill|competenc|technolog/) || is(s, /education|academic/) || is(s, /certif|award|achievement|license/)) {
+    if (kindIs(s, 'skills') || kindIs(s, 'education') || kindIs(s, 'certs')) {
       const stay = []
       for (const l of s.lines) {
         if (work && looksLikeSentence(l)) strayWork.push(l)
-        else if (is(s, /education|academic/) && looksLikeSkillLine(l)) strayTools.push(l)
+        else if (kindIs(s, 'education') && looksLikeSkillLine(l)) strayTools.push(l)
         else stay.push(l)
       }
       s.lines = stay
@@ -270,7 +274,7 @@ export function linesToModel(rawLines) {
   const lines = rawLines.map((l) => (typeof l === 'string' ? { text: l, size: 0 } : l)).filter((l) => l.text?.trim())
   const model = emptyResume()
   if (lines.length === 0) return model
-  const parsed = parseSections(lines)
+  const parsed = parseSections(lines.map((l) => ({ ...l, text: despaceText(l.text) })))
   const name = parsed.name
   const header = [...parsed.header]
   const sections = repairSections(parsed.sections, header)
@@ -285,7 +289,7 @@ export function linesToModel(rawLines) {
     const m = h.match(LINK)
     if (m && !EMAIL.test(m[0])) links.push(m[0])
   }
-  model.contact.links = [...new Set(links)]
+  model.contact.links = normalizeLinks([...new Set(links)])
   const rest = header
     .flatMap((h) => h.split(/\s[|•·]\s|\s{2,}/))
     .map((h) => h.trim())
@@ -295,13 +299,13 @@ export function linesToModel(rawLines) {
   model.contact.location = rest.find((h) => h !== model.headline && h.length <= 60) || ''
 
   for (const sec of sections) {
-    const h = sec.heading.toLowerCase()
-    if (/summary|profile|objective|about/.test(h)) model.summary = bulletsOf(sec.lines).join(' ')
-    else if (/experience|employment|internship/.test(h)) model.experience.push(...parseExperience(sec.lines))
-    else if (/education|academic/.test(h)) model.education.push(...parseEducation(sec.lines))
-    else if (/project/.test(h)) model.projects.push(...parseProjects(sec.lines))
-    else if (/skill|competenc|technolog/.test(h)) model.skills.push(...splitSkillItems(sec.lines))
-    else if (/certif|award|achievement|license/.test(h)) model.certifications.push(...tidyCertLines(bulletsOf(sec.lines)))
+    const kind = classifyHeading(sec.heading)
+    if (kind === 'summary') model.summary = bulletsOf(sec.lines).join(' ')
+    else if (kind === 'experience') model.experience.push(...parseExperience(sec.lines))
+    else if (kind === 'education') model.education.push(...parseEducation(sec.lines))
+    else if (kind === 'projects') model.projects.push(...parseProjects(sec.lines))
+    else if (kind === 'skills') model.skills.push(...splitSkillItems(sec.lines))
+    else if (kind === 'certs') model.certifications.push(...tidyCertLines(bulletsOf(sec.lines)))
     else model.extra.push({ id: uid(), heading: sec.heading, lines: bulletsOf(sec.lines) })
   }
   const seen = new Set()
@@ -321,7 +325,7 @@ export function normalizeModel(m) {
     const heading = cleanHeading(x.heading || '')
     // A resume saved before the reader was fixed can hold a real section ("W O R K
     // E X P E R I E N C E", "SKILLS") as an extra block. Put it back where it belongs.
-    if (/^(work experience|experience|employment( history)?|professional experience|education|projects?|skills?|technical skills|certifications?( and awards)?)$/i.test(heading)) stranded.push({ heading, lines: x.lines || [] })
+    if (classifyHeading(heading) && classifyHeading(heading) !== 'summary' && classifyHeading(heading) !== 'contact') stranded.push({ heading, lines: x.lines || [] })
     else if (ISSUERS.has(heading.trim().toLowerCase()) || /^[A-Z]{2,6}$/.test(heading.trim())) {
       // An issuer name ("IBM", "Google") that was read as a section: back under Certifications.
       for (const l of bulletsOf(x.lines || [])) next.certifications.push(`${heading.trim()}: ${l}`)
@@ -330,11 +334,11 @@ export function normalizeModel(m) {
   if (stranded.length) {
     const repaired = repairSections(stranded.map((s) => ({ heading: s.heading, lines: [...s.lines] })), header)
     for (const sec of repaired) {
-      const h = sec.heading.toLowerCase()
-      if (/experience|employment/.test(h)) next.experience.push(...parseExperience(sec.lines))
-      else if (/education/.test(h)) next.education.push(...parseEducation(sec.lines))
-      else if (/project/.test(h)) next.projects.push(...parseProjects(sec.lines))
-      else if (/skill/.test(h)) next.skills.push(...splitSkillItems(sec.lines))
+      const kind = classifyHeading(sec.heading)
+      if (kind === 'experience') next.experience.push(...parseExperience(sec.lines))
+      else if (kind === 'education') next.education.push(...parseEducation(sec.lines))
+      else if (kind === 'projects') next.projects.push(...parseProjects(sec.lines))
+      else if (kind === 'skills') next.skills.push(...splitSkillItems(sec.lines))
       else next.certifications.push(...tidyCertLines(bulletsOf(sec.lines)))
     }
     const headerText = header.join(' | ')
@@ -343,6 +347,20 @@ export function normalizeModel(m) {
     const seen = new Set()
     next.skills = next.skills.filter((s) => (seen.has(String(s).toLowerCase()) ? false : seen.add(String(s).toLowerCase())))
   }
+  // Basics typed letter by letter, plain-text links, and older single "year" fields.
+  const fix = (t) => despaceText(String(t ?? ''))
+  next.name = fix(next.name)
+  next.headline = fix(next.headline)
+  next.contact = { ...next.contact, email: fix(next.contact.email).replace(/\s+/g, ''), phone: fix(next.contact.phone), location: fix(next.contact.location), links: normalizeLinks(next.contact.links) }
+  next.experience = next.experience.map((e) => {
+    const cur = e.current ?? /^(present|current|now)$/i.test(String(e.end || '').trim())
+    return { ...e, current: !!cur, end: cur ? '' : e.end || '' }
+  })
+  next.education = next.education.map((e) => {
+    if (e.start || e.end || !e.year) return { start: '', end: '', ...e }
+    const p = splitPeriod(e.year)
+    return { ...e, start: p.start, end: p.end }
+  })
   return { ...next, extra: out.extra }
 }
 
@@ -353,12 +371,12 @@ export function resumeToText(m) {
   const push = (t) => t && String(t).trim() && out.push(String(t).trim())
   push(m.name)
   push(m.headline)
-  push([m.contact?.email, m.contact?.phone, m.contact?.location, ...(m.contact?.links || [])].filter(Boolean).join(' | '))
+  push([m.contact?.email, m.contact?.phone, m.contact?.location, ...normalizeLinks(m.contact?.links).map((l) => (l.url && l.label !== l.url ? `${l.label}: ${l.url}` : l.url || l.label))].filter(Boolean).join(' | '))
   if (m.summary) { push('SUMMARY'); push(m.summary) }
   if (m.experience?.length) {
     push('EXPERIENCE')
     for (const e of m.experience) {
-      push([e.title, e.org, e.location].filter(Boolean).join(' | ') + (e.start || e.end ? `  ${e.start} - ${e.end}` : ''))
+      push([e.title, e.org, e.location].filter(Boolean).join(' | ') + (e.start || e.end || e.current ? `  ${experiencePeriod(e)}` : ''))
       for (const b of e.bullets || []) if (b?.trim()) push(`- ${b.trim()}`)
     }
   }
@@ -371,7 +389,7 @@ export function resumeToText(m) {
   }
   if (m.education?.length) {
     push('EDUCATION')
-    for (const e of m.education) push([e.degree, e.school, e.year, e.detail].filter(Boolean).join(' | '))
+    for (const e of m.education) push([e.degree, e.school, educationPeriod(e), e.detail].filter(Boolean).join(' | '))
   }
   if (m.skills?.length) { push('SKILLS'); push(m.skills.join(', ')) }
   if (m.certifications?.length) { push('CERTIFICATIONS'); m.certifications.forEach((c) => push(`- ${c}`)) }

@@ -1,6 +1,8 @@
 // Turns the resume / letter model into a neutral document description that
 // both the on-screen preview and the PDF renderer draw, so they always agree.
 import { sectionOrder } from './resumeTemplates'
+import { experiencePeriod, educationPeriod } from './resumeDates'
+import { linkItems } from './resumeLinks'
 
 export const SIDE_KEYS = ['skills', 'education', 'certifications']
 
@@ -8,7 +10,7 @@ const clean = (s) => String(s || '').trim()
 
 export function contactLines(model) {
   const c = model.contact || {}
-  return [c.email, c.phone, c.location, ...(c.links || [])].map(clean).filter(Boolean)
+  return [c.email, c.phone, c.location, ...linkItems(c.links).map((l) => l.label)].map(clean).filter(Boolean)
 }
 
 function sectionItems(key, m) {
@@ -21,7 +23,7 @@ function sectionItems(key, m) {
         .map((e) => ({
           t: 'entry', title: clean(e.title) || clean(e.org),
           sub: [clean(e.title) ? clean(e.org) : '', clean(e.location)].filter(Boolean).join(' · '),
-          meta: [clean(e.start), clean(e.end)].filter(Boolean).join(' – '),
+          meta: experiencePeriod(e),
           bullets: (e.bullets || []).map(clean).filter(Boolean),
         }))
       return items.length ? { heading: 'Experience', items } : null
@@ -35,7 +37,7 @@ function sectionItems(key, m) {
     case 'education': {
       const items = (m.education || [])
         .filter((e) => clean(e.degree) || clean(e.school))
-        .map((e) => ({ t: 'entry', title: clean(e.degree) || clean(e.school), sub: [clean(e.degree) ? clean(e.school) : '', clean(e.location)].filter(Boolean).join(' · '), meta: clean(e.year), bullets: clean(e.detail) ? [clean(e.detail)] : [] }))
+        .map((e) => ({ t: 'entry', title: clean(e.degree) || clean(e.school), sub: [clean(e.degree) ? clean(e.school) : '', clean(e.location)].filter(Boolean).join(' · '), meta: educationPeriod(e), bullets: clean(e.detail) ? [clean(e.detail)] : [] }))
       return items.length ? { heading: 'Education', items } : null
     }
     case 'skills': {

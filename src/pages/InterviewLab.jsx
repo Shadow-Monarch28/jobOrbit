@@ -148,7 +148,7 @@ export default function InterviewLab() {
       {applications.length === 0 && (
         <p className="text-sm text-[var(--color-text-muted)] mt-6">
           Nothing to practise on yet. Upload your resume in{' '}
-          <PillLink to="/account#resume">Account Details</PillLink>{' '}
+          <PillLink to="/resume-builder">Resume Forge</PillLink>{' '}
           and apply to a job from <PillLink to="/search">Discover</PillLink> to start a mock interview.
         </p>
       )}

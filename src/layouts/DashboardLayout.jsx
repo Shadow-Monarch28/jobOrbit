@@ -15,8 +15,8 @@ const CAREER_LINKS = [
 const PREPARATION_LINKS = [
   { to: '/interview-lab', label: 'Interview Lab' },
   { to: '/skill-builder', label: 'Skill Builder' },
-  { to: '/resume-builder', label: 'Resume Builder' },
-  { to: '/resume-builder?tab=ats', label: 'ATS Evaluator' },
+  { to: '/resume-builder', label: 'Resume Forge' },
+  { to: '/resume-builder?tab=ats', label: 'ATS Radar' },
 ]
 
 const PROFILE_LINKS = [

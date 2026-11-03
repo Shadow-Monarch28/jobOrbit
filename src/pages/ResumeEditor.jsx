@@ -16,6 +16,8 @@ import {
 import { evaluateAts } from '../lib/atsEvaluator'
 import { listDocs, listJobs, loadModel, saveDoc, setDefaultDoc, isResumeDoc, docTitle } from '../lib/builderApi'
 import { requestBuilderAi } from '../lib/aiCoach'
+import { toMonthInput, fromMonthInput } from '../lib/resumeDates'
+import { normalizeLinks, newLink, linkLabel as linkLabelOf } from '../lib/resumeLinks'
 import { renderBuilderPdf, renderCoverPdf, downloadPdfBytes } from '../lib/resumePdf'
 
 const bs = { borderColor: 'var(--color-border)' }
@@ -90,6 +92,52 @@ function EntryShell({ index, count, onMove, onRemove, children }) {
   )
 }
 
+function MonthInput({ label, value, onChange, disabled }) {
+  const mv = toMonthInput(value)
+  return (
+    <label className={`block ${disabled ? 'opacity-50' : ''}`}>
+      <span className="block text-xs text-[var(--color-text-muted)] mb-1">{label}</span>
+      {value && !mv && !disabled && <span className="block text-[11px] text-[var(--color-text-muted)] mb-1">Was: {value}</span>}
+      <input type="month" value={mv} disabled={disabled} onChange={(e) => onChange(fromMonthInput(e.target.value))} className={`${inputCls} ${disabled ? 'cursor-not-allowed bg-[var(--color-border)]' : ''}`} style={bs} />
+    </label>
+  )
+}
+
+function PeriodInputs({ item, onChange, currentLabel }) {
+  return (
+    <div className="sm:col-span-2">
+      <div className="grid grid-cols-2 gap-3">
+        <MonthInput label="Start" value={item.start} onChange={(v) => onChange({ start: v })} />
+        <MonthInput label="End" value={item.current ? '' : item.end} disabled={!!item.current} onChange={(v) => onChange({ end: v })} />
+      </div>
+      <label className="flex items-center gap-2 text-sm mt-2 cursor-pointer">
+        <input type="checkbox" checked={!!item.current} onChange={(e) => onChange({ current: e.target.checked, end: e.target.checked ? '' : item.end })} style={{ accentColor: 'var(--color-accent)' }} />
+        {currentLabel}
+      </label>
+    </div>
+  )
+}
+
+function LinksEditor({ links, onChange }) {
+  const list = normalizeLinks(links)
+  const set = (i, patch) => onChange(list.map((l, j) => (j === i ? { ...l, ...patch } : l)))
+  return (
+    <div className="sm:col-span-2">
+      <span className="block text-xs text-[var(--color-text-muted)] mb-1">Links shown on your resume (the name is what readers see)</span>
+      <div className="flex flex-col gap-2">
+        {list.map((l, i) => (
+          <div key={l.id} className="grid grid-cols-[1fr_2fr_auto] gap-2 items-center">
+            <input value={l.label} onChange={(e) => set(i, { label: e.target.value })} placeholder="Name, e.g. LinkedIn" aria-label="Link name" className={inputCls} style={bs} />
+            <input value={l.url} onChange={(e) => set(i, { url: e.target.value, label: l.label && l.label !== linkLabelOf(l.url) ? l.label : linkLabelOf(e.target.value) })} placeholder="Paste the URL" aria-label="Link URL" className={inputCls} style={bs} />
+            <button type="button" aria-label="Remove link" className={btn} style={bs} onClick={() => onChange(list.filter((_, j) => j !== i))}>✕</button>
+          </div>
+        ))}
+      </div>
+      <button type="button" className={`${btn} mt-2`} style={bs} onClick={() => onChange([...list, newLink()])}>+ Add link</button>
+    </div>
+  )
+}
+
 const move = (list, i, d) => {
   const j = i + d
   if (j < 0 || j >= list.length) return list
@@ -111,7 +159,7 @@ function ResumeForm({ model, setModel }) {
           <TextInput label="Email" type="email" value={model.contact.email} onChange={(v) => upContact({ email: v })} />
           <TextInput label="Phone" value={model.contact.phone} onChange={(v) => upContact({ phone: v })} />
           <TextInput label="Location" value={model.contact.location} onChange={(v) => upContact({ location: v })} />
-          <TextInput label="Links (comma separated)" value={(model.contact.links || []).join(', ')} onChange={(v) => upContact({ links: v.split(',').map((s) => s.trim()).filter(Boolean) })} placeholder="linkedin.com/in/you, github.com/you" />
+          <LinksEditor links={model.contact.links} onChange={(links) => upContact({ links })} />
         </div>
       </Card>
 
@@ -127,10 +175,7 @@ function ResumeForm({ model, setModel }) {
               <TextInput label="Job title" value={e.title} onChange={(v) => upList('experience', i, { title: v })} />
               <TextInput label="Company" value={e.org} onChange={(v) => upList('experience', i, { org: v })} />
               <TextInput label="Location" value={e.location} onChange={(v) => upList('experience', i, { location: v })} />
-              <div className="grid grid-cols-2 gap-3">
-                <TextInput label="Start" value={e.start} onChange={(v) => upList('experience', i, { start: v })} placeholder="Jan 2022" />
-                <TextInput label="End" value={e.end} onChange={(v) => upList('experience', i, { end: v })} placeholder="Present" />
-              </div>
+              <PeriodInputs item={e} onChange={(patch) => upList('experience', i, patch)} currentLabel="I currently work here" />
             </div>
             <Bullets list={e.bullets} onChange={(b) => upList('experience', i, { bullets: b })} />
           </EntryShell>
@@ -158,7 +203,7 @@ function ResumeForm({ model, setModel }) {
               <TextInput label="Degree" value={e.degree} onChange={(v) => upList('education', i, { degree: v })} />
               <TextInput label="School" value={e.school} onChange={(v) => upList('education', i, { school: v })} />
               <TextInput label="Location" value={e.location} onChange={(v) => upList('education', i, { location: v })} />
-              <TextInput label="Years" value={e.year} onChange={(v) => upList('education', i, { year: v })} placeholder="2021 – 2024" />
+              <PeriodInputs item={e} onChange={(patch) => upList('education', i, { ...patch, year: '' })} currentLabel="I'm still studying here" />
             </div>
             <TextInput label="Details (optional)" value={e.detail} onChange={(v) => upList('education', i, { detail: v })} />
           </EntryShell>

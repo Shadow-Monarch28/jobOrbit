@@ -55,6 +55,32 @@ export function cleanHeading(text) {
   return t
 }
 
+// Which resume section a heading belongs to, whatever wording the resume used.
+export function classifyHeading(text) {
+  const h = String(text || '').toLowerCase()
+  if (/^(contact|personal)( details| information)?$|^details$|^information$/.test(h.trim())) return 'contact'
+  if (/summary|profile|objective|about/.test(h)) return 'summary'
+  if (/project/.test(h)) return 'projects'
+  if (/experience|employment|work history|internship|work$/.test(h)) return 'experience'
+  if (/education|academic|qualification/.test(h)) return 'education'
+  if (/skill|competenc|technolog|expertise|tools/.test(h)) return 'skills'
+  if (/certif|award|achievement|licen|course|honou?r|accomplish/.test(h)) return 'certs'
+  return null
+}
+
+// "J O H N   D O E" or "j o h n @ g m a i l . c o m" -> normal text. Leaves ordinary lines alone.
+export function despaceText(text) {
+  const t = String(text || '').trim()
+  if (!t) return t
+  const tokens = t.split(/\s+/)
+  if (tokens.length < 4) return t
+  const singles = tokens.filter((x) => x.length === 1).length
+  if (singles / tokens.length < 0.7) return t
+  // Wide gaps (2+ spaces) separate words in letter-spaced text; single spaces separate letters.
+  if (/\s{2,}/.test(t)) return t.split(/\s{2,}/).map((w) => w.replace(/\s+/g, '')).join(' ')
+  return respaceHeading(tokens.join('')) === tokens.join('') ? tokens.join('') : respaceHeading(tokens.join(''))
+}
+
 function buildLines(chunks) {
   const sorted = [...chunks].sort((a, b) => (Math.abs(b.y - a.y) > 2.5 ? b.y - a.y : a.x - b.x))
   const rows = []
@@ -207,7 +233,7 @@ export function groupItemsIntoLines(items) {
 // ---------- 2. lines -> sections ----------
 
 const KNOWN_HEADING =
-  /^(professional\s+|career\s+|technical\s+|key\s+)?(summary|profile|objective|experience|work experience|employment( history)?|education( and training)?|academic( background| qualifications)?|projects?|skills?|core competencies|certifications?( and awards)?|achievements?|awards?|publications?|languages|interests|hobbies|references|volunteer(ing)?( experience)?|internships?|training|courses|contact( details| information)?|personal( details| information)?|about me)\s*:?$/i
+  /^((professional|career|technical|key|core|relevant|selected|academic|personal|work|industry|internship|hands-on|notable|major|additional|other)\s+)?(summary|profile|objective|career objective|about( me)?|experience|work experience|work history|employment( history)?|professional experience|education( and training| & training)?|educational( qualifications?| background)?|qualifications?|academic( background| qualifications?| projects?)?|projects?|project work|projects? experience|skills?( & tools| and tools)?( summary)?|tools( & technologies| and technologies)?|technologies|areas of expertise|expertise|core competencies|competencies|certifications?( and awards| & awards| and licenses| & licenses)?|licen[sc]es( & certifications| and certifications)?|courses|certificates?|achievements?|accomplishments|awards?( and honors| & honors)?|honou?rs|publications?|languages|interests|hobbies|references|volunteer(ing)?( experience)?|internships?|training|contact( details| information)?|details|information)\s*:?$/i
 const SKILLS_HEADING = /^(technical\s+|key\s+|core\s+|professional\s+)?(skills?( summary| & .*)?|core competencies|technologies|competencies)\s*:?$/i
 const BULLET_RE = /^\s*([•▪●◦‣■□*]|[-–]\s|[-])\s*/
 const INSERT_BEFORE = /experience|education|project|employment|work/i

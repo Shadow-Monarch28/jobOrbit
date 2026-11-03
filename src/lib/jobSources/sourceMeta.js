@@ -13,13 +13,13 @@ export const SOURCES = [
   { key: 'remotive', label: 'Remotive', kind: 'api' },
   { key: 'jobicy', label: 'Jobicy', kind: 'api' },
   { key: 'themuse', label: 'The Muse', kind: 'api' },
-  { key: 'himalayas', label: 'Himalayas', kind: 'api' },
-  { key: 'workingnomads', label: 'Working Nomads', kind: 'api' },
-  { key: 'ashby', label: 'Ashby', kind: 'api' },
   { key: 'arbeitnow', label: 'Arbeitnow', kind: 'api' },
   { key: 'foundit', label: 'Foundit', kind: 'link' },
   { key: 'cutshort', label: 'Cutshort', kind: 'link' },
   { key: 'wellfound', label: 'Wellfound', kind: 'link' },
+  { key: 'naukri', label: 'Naukri', kind: 'link' },
+  { key: 'indeed', label: 'Indeed', kind: 'link' },
+  { key: 'linkedin', label: 'LinkedIn Jobs', kind: 'link' },
 ]
 
 export const SOURCE_LABEL = Object.fromEntries(SOURCES.map((s) => [s.key, s.label]))
@@ -39,6 +39,12 @@ export function buildSourceLink(key, { title = '', country = '' } = {}) {
       return q ? `https://cutshort.io/jobs?query=${q}` : 'https://cutshort.io/jobs'
     case 'wellfound':
       return title.trim() ? `https://wellfound.com/role/${slug(title)}` : 'https://wellfound.com/jobs'
+    case 'naukri':
+      return title.trim() ? `https://www.naukri.com/${slug(title)}-jobs` : 'https://www.naukri.com/'
+    case 'indeed':
+      return q ? `https://www.indeed.com/jobs?q=${q}${country ? `&l=${encodeURIComponent(country)}` : ''}` : 'https://www.indeed.com/'
+    case 'linkedin':
+      return q ? `https://www.linkedin.com/jobs/search/?keywords=${q}${country ? `&location=${encodeURIComponent(country)}` : ''}` : 'https://www.linkedin.com/jobs/'
     default:
       return ''
   }

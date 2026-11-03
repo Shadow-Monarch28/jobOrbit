@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { extractResumeText } from '../lib/resumeParser'
@@ -14,7 +14,7 @@ import NewDocModal from '../components/NewDocModal'
 import PillLink from '../components/PillLink'
 
 const bs = { borderColor: 'var(--color-border)' }
-const TABS = [['resumes', 'Resumes'], ['letters', 'Cover Letters'], ['templates', 'Templates'], ['ats', 'ATS Evaluator']]
+const TABS = [['resumes', 'Resumes'], ['letters', 'Cover Letters'], ['templates', 'Templates'], ['ats', 'ATS Radar']]
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -42,7 +42,6 @@ function ActionCard({ title, blurb, onClick, icon }) {
         <span className="block font-medium">{title}</span>
         <span className="block text-xs text-[var(--color-text-muted)] mt-0.5">{blurb}</span>
       </span>
-      <span className="text-[var(--color-text-muted)] text-lg">+</span>
     </button>
   )
 }
@@ -83,6 +82,7 @@ function DocTable({ rows, allRows, kind, refresh, setError, onNew }) {
   const [pending, setPending] = useState(null) // rows awaiting delete confirmation
   const [deleting, setDeleting] = useState(false)
   const fileRef = useRef(null)
+  const [dragging, setDragging] = useState(false)
 
   const shown = useMemo(() => rows.filter((r) => {
     if (q && !docTitle(r).toLowerCase().includes(q.toLowerCase())) return false
@@ -163,7 +163,24 @@ function DocTable({ rows, allRows, kind, refresh, setError, onNew }) {
   const edit = (row) => navigate(`/resume-builder/edit/${row.id}`)
   const copy = (row) => navigate('/resume-builder/new', { state: { kind: 'resume', mode: 'resume', resumeId: row.id, templateId: 'modern' } })
 
+  const drop = (e) => { e.preventDefault(); setDragging(false); if (kind === 'resume') upload(e.dataTransfer.files?.[0]) }
   return (
+    <>
+    {kind === 'resume' && (
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={drop}
+        onClick={() => fileRef.current?.click()}
+        role="button" tabIndex={0}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileRef.current?.click()}
+        className="rounded-xl border-2 border-dashed p-5 mb-4 text-center cursor-pointer transition-colors"
+        style={{ borderColor: dragging ? 'var(--color-accent)' : 'var(--color-border)', backgroundColor: dragging ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent' }}
+      >
+        <p className="font-medium text-sm">{uploading ? 'Reading your resume...' : dragging ? 'Drop it right here' : '⬆ Drag your resume here, or click to browse'}</p>
+        <p className="text-xs text-[var(--color-text-muted)] mt-1">PDF or DOCX. It lands in your list below, ready to edit in a copy, tailor and score.</p>
+      </div>
+    )}
     <div className="rounded-xl border" style={{ ...bs, backgroundColor: 'var(--color-surface)' }}>
       <div className="flex flex-wrap items-center gap-3 p-3 border-b" style={bs}>
         <span className="text-sm text-[var(--color-text-muted)] min-w-[80px]">{selected.length} selected</span>
@@ -246,6 +263,7 @@ function DocTable({ rows, allRows, kind, refresh, setError, onNew }) {
         </div>
       )}
     </div>
+    </>
   )
 }
 
@@ -356,8 +374,8 @@ function AtsTab({ docs }) {
   return (
     <div className="grid lg:grid-cols-[320px_1fr] gap-6 items-start">
       <div className="rounded-xl border p-4 flex flex-col gap-3" style={{ ...bs, backgroundColor: 'var(--color-surface)' }}>
-        <h2 className="font-heading font-semibold">ATS Evaluator</h2>
-        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">Pick a resume and a saved job. You get a score out of 100, the keywords you're missing, and fixes you can apply in the builder.</p>
+        <h2 className="font-heading font-semibold">ATS Radar</h2>
+        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">Ghost the filters, not the recruiters. Pick a resume and a saved job and the radar pings a score out of 100, the keywords you're missing, and fixes you can apply in one click.</p>
         {resumes.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-warning)' }}>Upload or build a resume first.</p> : (
           <>
             <label className="text-xs text-[var(--color-text-muted)]">Resume</label>
@@ -420,10 +438,10 @@ export default function ResumeBuilder() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto">
-      <h1 className="font-heading text-2xl font-semibold mb-1">My Documents</h1>
-      <p className="font-heading text-lg font-medium mt-3">Build Resumes That Beat the Bots.</p>
+      <h1 className="font-heading text-2xl font-semibold mb-1">Resume Forge</h1>
+      <p className="font-heading text-lg font-medium mt-3">Hammer out resumes so sharp even the robots swipe right.</p>
       <p className="text-sm text-[var(--color-text-muted)] mt-2 mb-6 leading-relaxed max-w-2xl">
-        Craft a resume or cover letter, tailor it to a saved job, and let the ATS evaluator tell you what to fix. Your default resume powers matches across JobOrbit.
+        Drop in the resume you have or forge a fresh one, tailor it to a saved job, then let ATS Radar tell you what to polish. Your default resume powers matches across JobOrbit.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-3 mb-8">
@@ -447,9 +465,6 @@ export default function ResumeBuilder() {
       {!loading && tab === 'ats' && <AtsTab docs={docs} />}
 
       {modal && <NewDocModal {...modal} onClose={() => setModal(null)} onStart={start} />}
-      <p className="text-xs text-[var(--color-text-muted)] mt-8">
-        Want to upload a file instead? <Link to="/account#resume" className="underline" style={{ color: 'var(--color-accent)' }}>Resume Dock</Link> in Account Details works too.
-      </p>
     </div>
   )
 }

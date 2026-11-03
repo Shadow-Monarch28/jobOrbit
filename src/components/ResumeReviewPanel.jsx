@@ -37,7 +37,7 @@ export default function ResumeReviewPanel({ applicationId, resumes }) {
           <p className="font-medium">No resume on file yet.</p>
           <p className="text-sm jo-support mt-2 leading-relaxed">
             Upload your resume in{' '}
-            <PillLink to="/account#resume">Account Details</PillLink>{' '}
+            <PillLink to="/resume-builder">Resume Forge</PillLink>{' '}
             to unlock your personalized review and discover your fit for this role.
           </p>
         </div>

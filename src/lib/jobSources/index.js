@@ -2,7 +2,7 @@ import { searchAdzuna } from './adzuna'
 import { searchLever } from './lever'
 import { searchRemoteOk } from './remoteok'
 import { searchArbeitnow } from './arbeitnow'
-import { searchRemotive, searchTheMuse, searchJobicy, searchGreenhouse, searchHimalayas, searchWorkingNomads, searchAshby } from './proxied'
+import { searchRemotive, searchTheMuse, searchJobicy, searchGreenhouse } from './proxied'
 import { API_SOURCE_KEYS } from './sourceMeta'
 
 function dedupe(jobs) {
@@ -82,25 +82,6 @@ export async function searchAllJobs({
     titleTerms.forEach((t) => {
       tasks.push(searchTheMuse({ q: t }))
       taskSources.push('themuse')
-    })
-  }
-
-  if (sources.includes('himalayas')) {
-    titleTerms.forEach((t) => {
-      tasks.push(searchHimalayas({ q: t }))
-      taskSources.push('himalayas')
-    })
-  }
-  if (sources.includes('workingnomads')) {
-    titleTerms.forEach((t) => {
-      tasks.push(searchWorkingNomads({ q: t }))
-      taskSources.push('workingnomads')
-    })
-  }
-  if (sources.includes('ashby')) {
-    titleTerms.forEach((t) => {
-      tasks.push(searchAshby({ q: t }))
-      taskSources.push('ashby')
     })
   }
 

@@ -25,6 +25,3 @@ export const searchRemotive = ({ q = '' } = {}) => fetchProxied('remotive', q, '
 export const searchTheMuse = ({ q = '' } = {}) => fetchProxied('themuse', q, 'The Muse')
 export const searchJobicy = ({ q = '' } = {}) => fetchProxied('jobicy', q, 'Jobicy')
 export const searchGreenhouse = ({ q = '' } = {}) => fetchProxied('greenhouse', q, 'Greenhouse')
-export const searchHimalayas = ({ q = '' } = {}) => fetchProxied('himalayas', q, 'Himalayas')
-export const searchWorkingNomads = ({ q = '' } = {}) => fetchProxied('workingnomads', q, 'Working Nomads')
-export const searchAshby = ({ q = '' } = {}) => fetchProxied('ashby', q, 'Ashby')

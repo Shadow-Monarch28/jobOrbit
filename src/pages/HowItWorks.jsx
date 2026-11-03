@@ -16,27 +16,27 @@ const STEPS = [
     title: 'Resume & Saved Jobs',
     headline: 'Your Resume. Their Requirements. Your Match.',
     blurb:
-      'Upload your resume, let JobOrbit extract your skills, and see which saved jobs fit you best — no manual tagging, no guesswork.',
-    to: '/account#resume',
+      'Drop your resume into Resume Forge, let JobOrbit extract your skills, and see which saved jobs fit you best — no manual tagging, no guesswork.',
+    to: '/resume-builder',
     cta: 'Find Your Match',
   },
   {
     number: '03',
-    title: 'Resume Builder',
-    headline: 'Build Resumes That Beat the Bots.',
+    title: 'Resume Forge',
+    headline: 'Hammer Out Resumes So Sharp the Robots Swipe Right.',
     blurb:
       'Pick from 21 resume and 15 cover letter templates, import an existing resume to edit it, or tailor a new one to a saved job. Download as PDF and set any resume as your default.',
     to: '/resume-builder',
-    cta: 'Start Building',
+    cta: 'Fire Up the Forge',
   },
   {
     number: '04',
-    title: 'ATS Evaluator',
-    headline: 'Know Your Score Before They Do.',
+    title: 'ATS Radar',
+    headline: 'Ghost the Filters, Not the Recruiters.',
     blurb:
       'Check any resume against a saved job for an ATS score out of 100, the keywords you are missing, and fixes you can apply in one click. Fixes make a new resume and your original stays untouched.',
     to: '/resume-builder?tab=ats',
-    cta: 'Check My Score',
+    cta: 'Ping My Score',
   },
   {
     number: '05',
@@ -85,7 +85,7 @@ export default function HowItWorks() {
 
       <p className="text-[var(--color-text-muted)] mt-8 leading-relaxed">
         Eight connected stages turn your career goals into actionable steps. Your resume powers your
-        matches, the ATS Evaluator shows how to improve it, the Resume Builder turns those fixes into a
+        matches, ATS Radar shows how to improve it, Resume Forge turns those fixes into a
         stronger resume, and your progress comes to life through personalized insights.
       </p>
       <p className="text-sm font-medium mt-4">Your journey. Your data. Your momentum.</p>

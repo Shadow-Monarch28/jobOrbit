@@ -31,5 +31,5 @@ console.log('catalog tests passed', JOB_TITLE_LIST.length, 'titles', SKILL_SUGGE
 
 // link-only sources must never be fetched or selectable
 import { API_SOURCE_KEYS, LINK_SOURCES } from '../src/lib/jobSources/sourceMeta.js'
-assert.ok(LINK_SOURCES.length === 3 && LINK_SOURCES.every((s) => !API_SOURCE_KEYS.includes(s.key)))
+assert.ok(LINK_SOURCES.length === 6 && LINK_SOURCES.every((s) => !API_SOURCE_KEYS.includes(s.key)))
 console.log('source tests passed')
