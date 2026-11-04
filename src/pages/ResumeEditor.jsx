@@ -487,7 +487,14 @@ export default function ResumeEditor() {
     }
   }
 
-  if (loading) return <div className="p-8 text-sm text-[var(--color-text-muted)]">Opening the editor...</div>
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3 text-sm text-[var(--color-text-muted)]" role="status" aria-live="polite">
+        <span className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--color-accent)', borderTopColor: 'transparent' }} />
+        Opening the editor...
+      </div>
+    )
+  }
   if (error && !model) {
     return (
       <div className="p-8 max-w-xl mx-auto">

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { extractSkillsFromText } from './matchingEngine'
+import { extractStructuredLines } from './resumeExtract'
 import { resumeToText, coverLetterToText, linesToModel, emptyResume, normalizeModel } from './resumeModel'
 
 // Resumes, built resumes and cover letters share the `resumes` table.
@@ -104,7 +105,6 @@ export async function loadModel(row) {
   const { data, error } = await supabase.storage.from('resumes').download(row.file_path)
   if (error || !data) throw new Error("Couldn't open the uploaded file to edit it.")
   const file = new File([data], row.file_name || 'resume.pdf', { type: data.type })
-  const { extractStructuredLines } = await import('./resumeExtract')
   const lines = await extractStructuredLines(file)
   return { model: linesToModel(lines), imported: true }
 }
