@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import PlanetLoader from '../components/PlanetLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -457,7 +458,7 @@ export default function ResumeBuilder() {
       </div>
 
       {error && <p className="text-sm mb-3" style={{ color: 'var(--color-danger)' }}>{error}</p>}
-      {loading && tab !== 'templates' && <p className="text-sm text-[var(--color-text-muted)] py-6">Loading your documents...</p>}
+      {loading && tab !== 'templates' && <PlanetLoader className="py-10" label="Loading your documents..." />}
 
       {!loading && tab === 'resumes' && <DocTable rows={resumes} allRows={docs} kind="resume" refresh={refresh} setError={setError} onNew={() => setModal({ kind: 'resume' })} />}
       {!loading && tab === 'letters' && <DocTable rows={letters} allRows={docs} kind="cover" refresh={refresh} setError={setError} onNew={() => setModal({ kind: 'cover' })} />}

@@ -50,7 +50,10 @@ export function educationPeriod(e) {
 
 // "2021 - 2024" / "Jul 2021 – Present" -> { start, end }
 export function splitPeriod(text) {
-  const parts = String(text || '').split(/\s*(?:-|–|—|\bto\b)\s*/i).map((s) => s.trim()).filter(Boolean)
+  // "May-2021" is one date, so a plain hyphen only splits when it has spaces around it
+  // or sits between two bare years ("2021-2024").
+  const t = String(text || '').replace(/\b([A-Za-z]{3,9})\.?[-/](\d{4})\b/g, '$1 $2').trim()
+  const parts = t.split(/\s*(?:–|—|\bto\b|\s-\s|(?<=\d{4})-(?=\d{4}|present|current))\s*/i).map((s) => s.trim()).filter(Boolean)
   if (parts.length === 0) return { start: '', end: '' }
   if (parts.length === 1) return { start: '', end: parts[0] }
   return { start: parts[0], end: parts[1] }

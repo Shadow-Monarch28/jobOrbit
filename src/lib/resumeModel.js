@@ -42,7 +42,7 @@ const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
 const PHONE = /(\+?\d[\d\s().-]{7,}\d)/
 const LINK = /((https?:\/\/)?(www\.)?(linkedin\.com|github\.com|behance\.net|dribbble\.com|[a-z0-9-]+\.(com|io|dev|me|in|net))\/[^\s,|]*)/i
 const MONTH = '(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?'
-const DATE_PART = `(${MONTH}\\s+)?(19|20)\\d{2}|\\d{1,2}\\/(19|20)\\d{2}`
+const DATE_PART = `(${MONTH}[\\s,./'-]*)?(19|20)\\d{2}|\\d{1,2}\\/(19|20)\\d{2}`
 const RANGE = new RegExp(`((${DATE_PART}))\\s*(-|–|—|to)\\s*(present|current|now|(${DATE_PART}))`, 'i')
 const DEGREE = /\b(bachelor|master|b\.?\s?tech|m\.?\s?tech|b\.?\s?sc|m\.?\s?sc|b\.?\s?e\b|m\.?\s?e\b|bca|mca|bba|mba|b\.?\s?com|m\.?\s?com|ph\.?d|diploma|associate|certificate|12th|10th|high school|hsc|ssc|b\.?a\b|m\.?a\b)/i
 const SCHOOL = /\b(university|college|institute|school|academy|polytechnic)\b/i
@@ -137,7 +137,7 @@ function parseExperience(lines) {
     if (title && org && !TITLE_RE.test(title) && TITLE_RE.test(org)) [title, org] = [org, title]
     const tl = splitTitleLocation(title)
     if (tl.location && !location) { title = tl.title; location = tl.location }
-    return { ...e, title, org, location, bullets: e.bullets.length ? e.bullets : [''] }
+    return { ...e, title: scrubText(title), org: scrubText(org), location: scrubText(location), bullets: e.bullets.length ? e.bullets : [''] }
   })
 }
 
@@ -153,6 +153,33 @@ export const educationLevelOf = (e) => {
   const t = `${e.degree || ''} ${e.school || ''}`
   return SCHOOL_LEVEL.test(t) && !COLLEGE_WORDS.test(`${e.degree || ''}`) && !/\b(university|college|institute)\b/i.test(e.school || '') ? 'school' : 'college'
 }
+
+// Left-overs of a date that was cut out of a line: "May ( )", a lone "June" as a place.
+const MONTH_WORD = /^(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(t(ember)?)?|oct(ober)?|nov(ember)?|dec(ember)?)\.?$/i
+export function scrubText(t) {
+  let x = String(t ?? '')
+  x = x.replace(/\(\s*[-–—,;|/]*\s*\)/g, ' ').replace(/\[\s*\]/g, ' ')
+  x = x.replace(/(^|[\s,;|·])(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(t(ember)?)?|oct(ober)?|nov(ember)?|dec(ember)?)\.?(?=\s*([,;|·)]|$))/gi, ' ')
+  x = x.replace(/\s+/g, ' ').replace(/^[\s,;:|·–—-]+|[\s,;:|·–—(-]+$/g, '').trim()
+  return MONTH_WORD.test(x) ? '' : x
+}
+
+// A section with an unfamiliar heading: decide what it is from what is inside it.
+const PROTECTED_HEADING = /language|interest|hobb|reference|declaration|award|volunteer|publication|personal|strength|achievement|certif/i
+export function guessKind(heading, lines) {
+  if (PROTECTED_HEADING.test(String(heading || ''))) return null
+  const ls = (lines || []).map((l) => String(l).trim()).filter(Boolean)
+  if (ls.length < 2) return null
+  const ranges = ls.filter((l) => RANGE.test(l)).length
+  const prose = ls.filter((l) => BULLET.test(l) || looksLikeSentence(l)).length
+  const edu = ls.filter((l) => DEGREE.test(l) || SCHOOL.test(l)).length
+  if (edu >= 2 && edu * 3 >= ls.length && prose < 2) return 'education'
+  if (ranges >= 1 && prose >= 2) return 'experience'
+  if (ranges >= 1 && ls.length >= 3 && edu === 0) return 'experience'
+  if (prose >= 3 && ls.some((l) => LINK.test(l) || /\b(dashboard|project|app|website|model|pipeline|analysis)\b/i.test(l))) return 'projects'
+  return null
+}
+const KIND_HEADING = { experience: 'Work Experience', education: 'Education', projects: 'Projects' }
 
 function parseEducation(lines) {
   const entries = []
@@ -201,8 +228,9 @@ function parseEducation(lines) {
     }
   }
   return entries.map((e) => {
-    const school = e.school.replace(/[,\s]+$/, '')
-    return { ...e, school, level: educationLevelOf({ ...e, school }) }
+    const school = scrubText(e.school)
+    const f = { ...e, school, degree: scrubText(e.degree), location: scrubText(e.location), detail: scrubText(e.detail) }
+    return { ...f, level: educationLevelOf(f) }
   })
 }
 
@@ -455,7 +483,13 @@ export function linesToModel(rawLines) {
     else if (kind === 'projects') model.projects.push(...parseProjects(sec.lines))
     else if (kind === 'skills') model.skills.push(...splitSkillItems(sec.lines))
     else if (kind === 'certs') model.certifications.push(...tidyCertLines(certLines(sec.lines)))
-    else model.extra.push({ id: uid(), heading: sec.heading, lines: bulletsOf(sec.lines) })
+    else {
+      const guess = guessKind(sec.heading, sec.lines)
+      if (guess === 'experience') model.experience.push(...parseExperience(sec.lines))
+      else if (guess === 'education') model.education.push(...parseEducation(sec.lines))
+      else if (guess === 'projects') model.projects.push(...parseProjects(sec.lines))
+      else model.extra.push({ id: uid(), heading: sec.heading, lines: bulletsOf(sec.lines) })
+    }
   }
   // "Link to Project" in the PDF is a hyperlink: give each project the address behind it.
   const spare = annots.filter((a) => !model.contact.links.some((l) => l.url === a.url) && !/linkedin\.com|github\.com\/[^/]+\/?$/i.test(a.url))
@@ -480,7 +514,9 @@ export function normalizeModel(m) {
     const heading = cleanHeading(x.heading || '')
     // A resume saved before the reader was fixed can hold a real section ("W O R K
     // E X P E R I E N C E", "SKILLS") as an extra block. Put it back where it belongs.
-    if (classifyHeading(heading) && classifyHeading(heading) !== 'summary' && classifyHeading(heading) !== 'contact') stranded.push({ heading, lines: x.lines || [] })
+    const guess = classifyHeading(heading) ? null : guessKind(heading, x.lines)
+    if (guess) stranded.push({ heading: KIND_HEADING[guess], lines: x.lines || [] })
+    else if (classifyHeading(heading) && classifyHeading(heading) !== 'summary' && classifyHeading(heading) !== 'contact') stranded.push({ heading, lines: x.lines || [] })
     else if (ISSUERS.has(heading.trim().toLowerCase()) || /^[A-Z]{2,6}$/.test(heading.trim())) {
       // An issuer name ("IBM", "Google") that was read as a section: back under Certifications.
       for (const l of bulletsOf(x.lines || [])) next.certifications.push(`${heading.trim()}: ${l}`)
@@ -509,9 +545,10 @@ export function normalizeModel(m) {
   next.contact = { ...next.contact, email: fix(next.contact.email).replace(/\s+/g, ''), phone: fix(next.contact.phone), location: fix(next.contact.location), links: normalizeLinks(next.contact.links) }
   next.experience = next.experience.map((e) => {
     const cur = e.current ?? /^(present|current|now)$/i.test(String(e.end || '').trim())
-    return { ...e, current: !!cur, end: cur ? '' : e.end || '' }
+    return { ...e, current: !!cur, end: cur ? '' : e.end || '', org: scrubText(e.org), location: scrubText(e.location) }
   })
-  next.education = next.education.map((e) => {
+  next.education = next.education.map((raw) => {
+    const e = { ...raw, school: scrubText(raw.school), degree: scrubText(raw.degree), location: scrubText(raw.location), detail: scrubText(raw.detail) }
     const base = { level: e.level || educationLevelOf(e), grade: '', ...e }
     if (e.start || e.end || !e.year) return { start: '', end: '', ...base }
     const p = splitPeriod(e.year)
@@ -587,7 +624,7 @@ export function tailorModelToJob(model, job) {
   const score = (b) => [...wanted].reduce((n, k) => n + (keyOf(b).includes(k) ? 1 : 0), 0)
   m.experience = (m.experience || []).map((e) => ({ ...e, bullets: [...(e.bullets || [])].sort((a, b) => score(b) - score(a)) }))
 
-  if (!m.headline && job?.title) m.headline = job.title
+  if (!m.headline && job?.title && job.titleGiven !== false) m.headline = job.title
   if (!m.summary?.trim() && job?.title) m.summary = draftSummary(m, job)
   return m
 }
@@ -597,7 +634,7 @@ export function draftSummary(model, job) {
   const skills = (model.skills || []).filter((s) => wanted.has(keyOf(s))).slice(0, 4)
   const fallback = (model.skills || []).slice(0, 4)
   const list = (skills.length ? skills : fallback).join(', ')
-  const role = job?.title || model.headline || 'professional'
+  const role = (job?.titleGiven === false ? '' : job?.title) || model.headline || 'professional'
   const company = job?.company ? ` at ${job.company}` : ''
   return `Motivated candidate for the ${role} role${company}${list ? `, bringing hands-on experience with ${list}` : ''}. Focused on delivering clear, measurable results and learning quickly.`
     .replace(/\s+/g, ' ')

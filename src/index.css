@@ -588,3 +588,18 @@ input[type='number'] {
   background-color: #28234a;
   border-color: #6250b7;
 }
+
+/* Planet loader (PlanetLoader.jsx) */
+.jo-planet { position: relative; }
+.jo-planet-moon {
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 9999px;
+  background: var(--color-text); opacity: .85;
+  animation: jo-moon 1.8s linear infinite;
+}
+.jo-planet svg { animation: jo-planet-bob 3.2s ease-in-out infinite; overflow: visible; }
+@keyframes jo-moon {
+  from { transform: rotate(0deg) translateX(34px) scaleY(.5) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(34px) scaleY(.5) rotate(-360deg); }
+}
+@keyframes jo-planet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .jo-planet-moon, .jo-planet svg { animation: none; } }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PlanetLoader from './PlanetLoader'
 import { supabase } from '../lib/supabase'
 import { computeMatchScore, generateImprovementGuidance, SHORTLIST_THRESHOLD } from '../lib/matchingEngine'
 import { createApplicationIfNeeded } from '../lib/applyToJob'
@@ -260,7 +261,7 @@ export default function SavedJobsMatchSection({ user, defaultResume }) {
   }
 
   if (loading) {
-    return <p className="text-sm text-[var(--color-text-muted)]">Loading saved jobs...</p>
+    return <PlanetLoader size={48} label="Loading saved jobs..." />
   }
 
   if (savedJobs.length === 0) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import PlanetLoader from '../components/PlanetLoader'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -224,7 +225,7 @@ export default function Account() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-8">
-        <p className="text-[var(--color-text-muted)]">Loading...</p>
+        <PlanetLoader label="Loading..." />
       </div>
     )
   }

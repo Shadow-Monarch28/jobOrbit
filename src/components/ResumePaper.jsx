@@ -12,7 +12,7 @@ function ContactRow({ items, sep = '  |  ', color, block }) {
   return items.map((c, i) => (
     <span key={i} style={block ? { display: 'block' } : undefined}>
       {i > 0 && !block ? sep : ''}
-      {c.href ? <a href={c.href} target="_blank" rel="noopener noreferrer" style={{ color: color || 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' }}>{c.text}</a> : c.text}
+      {c.href ? <a href={c.href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{c.text}</a> : c.text}
     </span>
   ))
 }
@@ -33,15 +33,15 @@ function Item({ item, t, inSide }) {
     if (inSide) return <div style={{ display: 'grid', gap: '2pt' }}>{item.list.map((s, i) => <div key={i}>{s}</div>)}</div>
     return <p style={{ margin: 0, lineHeight: 1.45 }}>{item.list.join('  •  ')}</p>
   }
-  if (item.t === 'bullets') return <ul style={{ margin: 0, paddingLeft: '13pt' }}>{item.list.map((b, i) => <li key={i} style={{ marginBottom: gap }}>{b}</li>)}</ul>
+  if (item.t === 'bullets') return <ul style={{ margin: 0, paddingLeft: '13pt', listStyleType: 'disc' }}>{item.list.map((b, i) => <li key={i} style={{ marginBottom: gap }}>{b}</li>)}</ul>
   return (
     <div style={{ marginBottom: t.compact ? '5pt' : '7pt' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8pt', alignItems: 'baseline' }}>
-        <span><strong style={{ fontSize: '10.5pt' }}>{item.title}</strong>{item.link && <> <span style={{ color: '#6b7280' }}>-</span> <a href={item.link.href} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', fontStyle: 'italic', textDecoration: 'underline', fontSize: '9.5pt' }}>{item.link.text}</a></>}</span>
+        <span><strong style={{ fontSize: '10.5pt' }}>{item.title}</strong>{item.link && <> <span style={{ color: '#6b7280' }}>-</span> <a href={item.link.href} target="_blank" rel="noopener noreferrer" style={{ color: '#4b5563', fontStyle: 'italic', textDecoration: 'none', fontSize: '9.5pt' }}>{item.link.text}</a></>}</span>
         {item.meta && <span style={{ fontSize: '9pt', color: '#4b5563', whiteSpace: 'nowrap' }}>{item.meta}</span>}
       </div>
       {item.sub && <div style={{ fontStyle: 'italic', color: '#4b5563', fontSize: '9.5pt' }}>{item.sub}</div>}
-      {item.bullets?.length > 0 && <ul style={{ margin: '2pt 0 0', paddingLeft: '13pt' }}>{item.bullets.map((b, i) => <li key={i} style={{ marginBottom: gap, lineHeight: 1.35 }}>{b}</li>)}</ul>}
+      {item.bullets?.length > 0 && <ul style={{ margin: '2pt 0 0', paddingLeft: '13pt', listStyleType: 'disc' }}>{item.bullets.map((b, i) => <li key={i} style={{ marginBottom: gap, lineHeight: 1.35 }}>{b}</li>)}</ul>}
     </div>
   )
 }

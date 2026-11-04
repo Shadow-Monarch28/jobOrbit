@@ -105,8 +105,8 @@ export async function renderBuilderPdf(model, template) {
       let x = align === 'center' ? x0 + (width - w) / 2 : x0
       row.forEach((it, i) => {
         if (i > 0) { text('|', x + sepW / 2 - 2, size, font, color); x += sepW }
-        text(it.t, x, size, font, it.href ? linkColor : color)
-        if (it.href) { page.drawLine({ start: { x, y: y - 1.5 }, end: { x: x + it.iw, y: y - 1.5 }, thickness: 0.5, color: linkColor }); addLink(page, x, y, it.iw, size, it.href) }
+        text(it.t, x, size, font, color)
+        if (it.href) addLink(page, x, y, it.iw, size, it.href) // clickable, but styled like the rest of the line
         x += it.iw
       })
       y -= size + 3.5
@@ -196,8 +196,7 @@ export async function renderBuilderPdf(model, template) {
         const lt = ` - ${safe(it.link.text)}`
         const lw = ital.widthOfTextAtSize(lt, 9.5)
         if (tw + lw < width - metaW) {
-          text(lt, x + tw, 9.5, ital, linkBlue)
-          page.drawLine({ start: { x: x + tw + ital.widthOfTextAtSize(' - ', 9.5), y: y - 1.5 }, end: { x: x + tw + lw, y: y - 1.5 }, thickness: 0.5, color: linkBlue })
+          text(lt, x + tw, 9.5, ital, muted)
           addLink(page, x + tw, y, lw, 9.5, it.link.href)
         }
       }
@@ -223,8 +222,8 @@ export async function renderBuilderPdf(model, template) {
     sideText('CONTACT', 10, bold, accent); sy -= 14
     for (const c of doc.contactItems) {
       for (const r of wrap(c.text, reg, 9, sideWd)) {
-        mainPage.drawText(r, { x: sideX, y: sy, size: 9, font: reg, color: c.href ? linkBlue : ink })
-        if (c.href) { const rw = reg.widthOfTextAtSize(r, 9); mainPage.drawLine({ start: { x: sideX, y: sy - 1.5 }, end: { x: sideX + rw, y: sy - 1.5 }, thickness: 0.5, color: linkBlue }); addLink(mainPage, sideX, sy, rw, 9, c.href) }
+        mainPage.drawText(r, { x: sideX, y: sy, size: 9, font: reg, color: ink })
+        if (c.href) { const rw = reg.widthOfTextAtSize(r, 9); addLink(mainPage, sideX, sy, rw, 9, c.href) }
         sy -= 12
       }
     }

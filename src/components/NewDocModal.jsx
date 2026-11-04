@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react'
+import PlanetLoader from './PlanetLoader'
 import { useAuth } from '../context/AuthContext'
 import { listDocs, listJobs, isResumeDoc, docTitle } from '../lib/builderApi'
 import { RESUME_TEMPLATES, COVER_TEMPLATES } from '../lib/resumeTemplates'
+
+// A job the person pasted in. If they left the title empty, look for "Job Title: ..."
+// or a short first line; otherwise it stays generic and never overwrites their headline.
+function pastedJob({ title, company, description }) {
+  const text = description.trim()
+  const labelled = text.match(/^\s*(?:job\s*title|position|role|designation)\s*[:\-]\s*(.{3,70})$/im)?.[1]
+  const first = text.split('\n')[0].trim()
+  const guess = labelled || (first.length <= 70 && !/[.!?]$/.test(first) && first.split(/\s+/).length <= 9 ? first : '')
+  const given = title.trim() || guess
+  return { id: 'pasted', title: given || 'Pasted job', titleGiven: !!given, company: company.trim(), description: text, source: 'pasted', sourceId: `pasted-${text.length}` }
+}
 
 // Where a new resume or cover letter starts: blank, from an existing resume, or
 // tailored to a saved job. It only collects choices; the editor does the work.
@@ -47,7 +59,7 @@ export default function NewDocModal({ kind = 'resume', initialTemplateId, initia
 
   function start() {
     const job = usePaste
-      ? { id: 'pasted', title: pasted.title.trim() || 'Pasted role', company: pasted.company.trim(), description: pasted.description.trim(), source: 'pasted' }
+      ? pastedJob(pasted)
       : jobs.find((j) => j.key === jobKey)?.job ?? null
     onStart({ kind, templateId, mode, resumeId: needsResume ? resumeId : '', job: needsJob ? job : null })
   }
@@ -75,7 +87,7 @@ export default function NewDocModal({ kind = 'resume', initialTemplateId, initia
           ))}
         </div>
 
-        {loading && <p className="text-xs text-[var(--color-text-muted)] mt-3">Loading your resumes and saved jobs...</p>}
+        {loading && <PlanetLoader className="mt-4" size={44} label="Loading your resumes and saved jobs..." />}
 
         {!loading && kind === 'resume' && (mode === 'resume' || mode === 'tailor') && (
           docs.length === 0 ? (

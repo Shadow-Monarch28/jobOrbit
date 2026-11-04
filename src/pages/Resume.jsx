@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import PlanetLoader from '../components/PlanetLoader'
 import { Link, useLocation } from 'react-router-dom'
 import PillLink from '../components/PillLink'
 import { supabase } from '../lib/supabase'
@@ -649,7 +650,7 @@ export default function Resume({ mode = 'resume' }) {
       )}
 
       {loadingList && (
-        <p className="text-sm text-[var(--color-text-muted)] text-center py-6">Loading your resumes...</p>
+        <PlanetLoader className="py-6" size={48} label="Loading your resumes..." />
       )}
       
       {!loadingList && resumes.length > 0 && (

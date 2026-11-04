@@ -34,3 +34,23 @@ assert.equal(m.extra.length, 0)
 assert.ok(!SOURCE_LABEL.himalayas && !SOURCE_LABEL.ashby && !SOURCE_LABEL.workingnomads)
 assert.ok(buildSourceLink('naukri', { title: 'Data Analyst' }).includes('data-analyst'))
 console.log('resume field tests passed')
+
+// ---- round: scrubbed leftovers, unfamiliar headings, month-dash dates ----
+import { scrubText, guessKind } from '../src/lib/resumeModel.js'
+assert.equal(scrubText('May ( )'), '')
+assert.equal(scrubText('June'), '')
+assert.equal(scrubText('Rohtak'), 'Rohtak')
+assert.equal(classifyHeading('W ORK  EXPERIENCE'), 'experience')
+assert.equal(classifyHeading('Positions Held'), 'experience')
+const fixed = normalizeModel({ name: 'A B', contact: { email: '', phone: '', location: '', links: [] }, experience: [], education: [
+  { id: 'e1', degree: 'BCA', school: 'MDU', location: 'June', start: '', end: '', year: '', detail: 'May ( )', grade: '67%' }], projects: [], skills: [], certifications: [],
+  extra: [{ id: 'x', heading: 'Where I Have Worked', lines: ['Analyst | Acme  Jan 2020 - Dec 2021', '- Built dashboards for the sales team every week', '- Automated monthly reports using Excel and SQL'] }] })
+assert.equal(fixed.education[0].location, '')
+assert.equal(fixed.education[0].detail, '')
+assert.equal(fixed.experience.length >= 1, true, 'unfamiliar heading reclassified by content')
+assert.equal(fixed.extra.length, 0)
+const mm = linesToModel([{ text: 'Abishek M', size: 20 }, { text: 'EDUCATION', size: 12 }, { text: 'BCA | Maharishi Dayanand University, Rohtak | May-2021 – May-2024 | 67%', size: 9 }, { text: 'SKILLS', size: 12 }, { text: 'SQL, Python', size: 9 }])
+assert.equal(mm.education[0].start, 'May 2021')
+assert.equal(mm.education[0].location, 'Rohtak')
+assert.equal(mm.education[0].grade, '67%')
+console.log('round-2 field tests passed')

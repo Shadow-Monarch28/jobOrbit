@@ -1,5 +1,6 @@
 import AutoTextarea from '../components/AutoTextarea'
 import UnsavedGuard from '../components/UnsavedGuard'
+import PlanetLoader from '../components/PlanetLoader'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -18,7 +19,7 @@ import { evaluateAts } from '../lib/atsEvaluator'
 import { listDocs, listJobs, loadModel, saveDoc, setDefaultDoc, isResumeDoc, docTitle } from '../lib/builderApi'
 import { requestBuilderAi } from '../lib/aiCoach'
 import { toMonthInput, fromMonthInput } from '../lib/resumeDates'
-import { normalizeLinks, newLink, linkLabel as linkLabelOf } from '../lib/resumeLinks'
+import { editableLinks, newLink, linkLabel as linkLabelOf } from '../lib/resumeLinks'
 import { renderBuilderPdf, renderCoverPdf, downloadPdfBytes } from '../lib/resumePdf'
 
 const bs = { borderColor: 'var(--color-border)' }
@@ -120,7 +121,7 @@ function PeriodInputs({ item, onChange, currentLabel }) {
 }
 
 function LinksEditor({ links, onChange }) {
-  const list = normalizeLinks(links)
+  const list = editableLinks(links)
   const set = (i, patch) => onChange(list.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   return (
     <div className="sm:col-span-2">
@@ -325,6 +326,30 @@ export default function ResumeEditor() {
   const [error, setError] = useState('')
   const [dirty, setDirty] = useState(false)
   const [pages, setPages] = useState(1)
+  const [baseDocs, setBaseDocs] = useState([])
+  const [baseId, setBaseId] = useState(state?.resumeId || '')
+  const [switching, setSwitching] = useState(false)
+
+  const mode = state?.mode || 'blank'
+  const loadingLabel = id ? 'Opening your document...'
+    : (state?.kind || kind) === 'cover' ? (mode === 'tailor' ? 'Drafting your letter for this job...' : 'Setting up a fresh letter...')
+    : mode === 'tailor' ? 'Tailoring your resume to the job...'
+    : mode === 'resume' ? 'Copying your resume into the editor...'
+    : 'Opening the editor...'
+  const guardCopy = (() => {
+    const bye = { discard: 'Discard changes', keep: 'Keep editing' }
+    if (kind === 'cover') {
+      return id
+        ? { ...bye, icon: '✉️', title: 'This letter has unsent edits', body: 'Your tweaks only live in this tab. Save them to your cover letters, or let them float away.', save: '💾 Save letter & leave' }
+        : { ...bye, icon: '✉️', title: 'Your letter is still in the drafts', body: 'Nobody has read it yet, and neither has your cover letter list. Save it before you go?', save: '💾 Save letter & leave', discard: 'Toss the draft' }
+    }
+    if (job || mode === 'tailor') {
+      return { ...bye, icon: '🎯', title: 'Your tailored resume is on the launchpad', body: `It was reshaped for ${job?.title ? `the ${job.title} role` : 'this job'}. Save it to Resume Forge, or let it drift off into space.`, save: '💾 Save tailored resume', discard: 'Scrap the tailoring' }
+    }
+    if (id) return { ...bye, icon: '📝', title: 'You have edits that were never saved', body: 'Changes to this resume only live in this tab. Lock them in before you leave?', save: '💾 Save my edits' }
+    if (mode === 'resume') return { ...bye, icon: '📑', title: 'Your copy is not saved yet', body: 'This copy of your resume only exists in this tab. Save it as its own resume, or let it go.', save: '💾 Save this copy', discard: 'Forget the copy' }
+    return { ...bye, icon: '✨', title: "Hold up, your masterpiece isn't saved!", body: 'This brand-new resume only lives in this tab. Forge it into your list, or let it drift off into the void?', save: '💾 Save & leave' }
+  })()
 
   const setModel = useCallback((m) => { setModelRaw(m); setDirty(true) }, [])
   const template = kind === 'cover' ? getCoverTemplate(templateId) : getResumeTemplate(templateId)
@@ -336,6 +361,13 @@ export default function ResumeEditor() {
     ;(async () => {
       try {
         listJobs(user.id).then(setJobs).catch(() => {})
+        if (!id && (state?.mode === 'resume' || state?.mode === 'tailor')) {
+          listDocs(user.id).then((all) => {
+            const rs = all.filter(isResumeDoc)
+            setBaseDocs(rs)
+            setBaseId((cur) => cur || (rs.find((r) => r.is_default) ?? rs[0])?.id || '')
+          }).catch(() => {})
+        }
         if (id) {
           const { data: row, error: err } = await supabase.from('resumes').select('*').eq('id', id).eq('user_id', user.id).single()
           if (err || !row) throw new Error("We couldn't find that document.")
@@ -423,6 +455,14 @@ export default function ResumeEditor() {
     setDirty(true)
   }
 
+  async function switchBase(newId) {
+    setBaseId(newId)
+    setSwitching(true)
+    setError('')
+    setNotice('')
+    try { await startNew({ ...(state || {}), resumeId: newId }) } catch (e) { setError(e.message || "Couldn't switch to that resume.") } finally { setSwitching(false) }
+  }
+
   const ats = useMemo(() => (kind === 'resume' && model && job ? evaluateAts({ model, job }) : null), [kind, model, job])
 
   async function save(opts = {}) {
@@ -487,14 +527,7 @@ export default function ResumeEditor() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3 text-sm text-[var(--color-text-muted)]" role="status" aria-live="polite">
-        <span className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--color-accent)', borderTopColor: 'transparent' }} />
-        Opening the editor...
-      </div>
-    )
-  }
+  if (loading) return <PlanetLoader full size={84} label={loadingLabel} />
   if (error && !model) {
     return (
       <div className="p-8 max-w-xl mx-auto">
@@ -516,7 +549,7 @@ export default function ResumeEditor() {
 
   return (
     <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
-      <UnsavedGuard dirty={dirty} saving={busy === 'save'} noun={kind === 'cover' ? 'cover letter' : 'resume'} onSave={() => save({ leaving: true })} />
+      <UnsavedGuard dirty={dirty} saving={busy === 'save'} copy={guardCopy} onSave={() => save({ leaving: true })} />
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <Link to="/resume-builder" className="text-sm underline" style={{ color: 'var(--color-accent)' }}>← My Documents</Link>
         <input value={title} onChange={(e) => { setTitle(e.target.value); setDirty(true) }} aria-label="Document name" placeholder="Document name" className="flex-1 min-w-[180px] text-base font-heading font-semibold px-3 py-1.5 rounded-lg border bg-transparent" style={bs} />
@@ -535,6 +568,16 @@ export default function ResumeEditor() {
           {busy === 'save' ? 'Saving...' : dirty ? 'Save' : 'Saved'}
         </button>
       </div>
+
+      {!id && baseDocs.length > 0 && (state?.mode === 'resume' || state?.mode === 'tailor') && (
+        <div className="flex flex-wrap items-center gap-2 mb-3 rounded-lg border px-3 py-2 text-sm" style={{ ...bs, backgroundColor: 'var(--color-surface)' }}>
+          <span className="text-[var(--color-text-muted)]">{state?.mode === 'tailor' ? 'Tailoring this resume:' : 'Starting from this resume:'}</span>
+          <select value={baseId} disabled={switching || !!busy} onChange={(e) => switchBase(e.target.value)} aria-label="Base resume" className="text-sm px-2.5 py-1.5 rounded-lg border bg-transparent min-w-[180px]" style={bs}>
+            {baseDocs.map((r) => <option key={r.id} value={r.id}>{docTitle(r)}{r.is_default ? ' (default)' : ''}</option>)}
+          </select>
+          <span className="text-xs text-[var(--color-text-muted)]">{switching ? 'Switching...' : 'Pick a different one and the editor restarts from it. Edits made so far are replaced.'}</span>
+        </div>
+      )}
 
       {notice && <p className="text-sm mb-3 rounded-lg border px-3 py-2" style={{ ...bs, backgroundColor: 'var(--color-surface)' }}>{notice}</p>}
       {error && <p className="text-sm mb-3" style={{ color: 'var(--color-danger)' }}>{error}</p>}

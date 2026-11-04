@@ -22,6 +22,8 @@ export function normalizeLink(x) {
   return { id: id(), label: linkLabel(url), url }
 }
 
+// Keeps empty rows too: the editor needs a blank row to type into.
+export const editableLinks = (list) => (Array.isArray(list) ? list : []).map((x) => (x && typeof x === 'object' ? { id: x.id || id(), label: String(x.label ?? ''), url: String(x.url ?? '') } : normalizeLink(x)))
 export const normalizeLinks = (list) => (Array.isArray(list) ? list : []).map(normalizeLink).filter((l) => l.url || l.label)
 export const linkItems = (list) => normalizeLinks(list).filter((l) => l.label || l.url).map((l) => ({ ...l, label: l.label || l.url }))
 export const newLink = () => ({ id: id(), label: '', url: '' })

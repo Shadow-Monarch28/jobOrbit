@@ -58,13 +58,14 @@ export function cleanHeading(text) {
 // Which resume section a heading belongs to, whatever wording the resume used.
 export function classifyHeading(text) {
   const h = String(text || '').toLowerCase()
-  if (/^(contact|personal)( details| information)?$|^details$|^information$/.test(h.trim())) return 'contact'
-  if (/summary|profile|objective|about/.test(h)) return 'summary'
-  if (/project/.test(h)) return 'projects'
-  if (/experience|employment|work history|internship|work$/.test(h)) return 'experience'
-  if (/education|academic|qualification/.test(h)) return 'education'
-  if (/skill|competenc|technolog|expertise|tools/.test(h)) return 'skills'
-  if (/certif|award|achievement|licen|course|honou?r|accomplish/.test(h)) return 'certs'
+  const c = h.replace(/[^a-z]/g, '') // "w ork-experience" and "WORKEXPERIENCE" read the same
+  if (/^(contact|personal)(details|information)?$|^details$|^information$/.test(c)) return 'contact'
+  if (/project/.test(c)) return 'projects'
+  if (/summary|profile|objective|^about/.test(c) && !/experience/.test(c)) return 'summary'
+  if (/experience|employment|workhistory|jobhistory|careerhistory|internship|professionalbackground|positionsheld|^work$|^career$/.test(c)) return 'experience'
+  if (/education|academic|qualification|schooling/.test(c)) return 'education'
+  if (/skill|competenc|technolog|expertise|tools|strengths/.test(c)) return 'skills'
+  if (/certif|award|achievement|licen|course|honou?r|accomplish|training/.test(c)) return 'certs'
   return null
 }
 

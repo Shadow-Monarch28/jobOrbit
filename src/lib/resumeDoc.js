@@ -48,7 +48,7 @@ function sectionItems(key, m) {
     case 'education': {
       const items = (m.education || [])
         .filter((e) => clean(e.degree) || clean(e.school))
-        .map((e) => ({ t: 'entry', title: clean(e.degree) || clean(e.school), sub: [clean(e.degree) ? clean(e.school) : '', clean(e.location)].filter(Boolean).join(' · '), meta: educationPeriod(e), bullets: [clean(e.grade) ? `${e.level === 'school' ? 'Percentage' : 'Grade'}: ${clean(e.grade)}` : '', clean(e.detail)].filter(Boolean) }))
+        .map((e) => ({ t: 'entry', title: clean(e.degree) || clean(e.school), sub: [clean(e.degree) ? clean(e.school) : '', clean(e.location), clean(e.grade) ? `${e.level === 'school' ? 'Percentage' : 'Grade'}: ${clean(e.grade)}` : ''].filter(Boolean).join(' · '), meta: educationPeriod(e), bullets: [clean(e.detail)].filter(Boolean) }))
       return items.length ? { heading: 'Education', items } : null
     }
     case 'skills': {

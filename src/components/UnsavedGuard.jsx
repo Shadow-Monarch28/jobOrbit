@@ -6,7 +6,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 // (Save, Discard or keep editing) instead of the browser's plain pop-up.
 // `onSave` must save and resolve true on success. Closing the tab can only use
 // the browser's own warning, which pages are not allowed to restyle.
-export default function UnsavedGuard({ dirty, onSave, saving, noun = 'document' }) {
+export default function UnsavedGuard({ dirty, onSave, saving, copy = {} }) {
+  const c = { icon: '✨', title: "Hold up, your masterpiece isn't saved!", body: 'These edits only live in this tab right now. Save them, or let them drift off into the void?', save: '💾 Save & leave', discard: 'Discard changes', keep: 'Keep editing', ...copy }
   const navigate = useNavigate()
   const location = useLocation()
   const [pending, setPending] = useState(null) // { to } | { back: true }
@@ -78,16 +79,16 @@ export default function UnsavedGuard({ dirty, onSave, saving, noun = 'document' 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,.6)' }} role="presentation">
       <div role="alertdialog" aria-modal="true" aria-labelledby="ug-title" className="w-full max-w-md rounded-2xl border p-6 shadow-2xl" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
-        <div className="text-3xl mb-2" aria-hidden="true">✨</div>
-        <h2 id="ug-title" className="font-heading text-xl font-semibold">Hold up, your masterpiece isn't saved!</h2>
+        <div className="text-3xl mb-2" aria-hidden="true">{c.icon}</div>
+        <h2 id="ug-title" className="font-heading text-xl font-semibold">{c.title}</h2>
         <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">
-          These edits only live in this tab right now. Lock them into your {noun} list, or let them drift off into the void?
+          {c.body}
         </p>
         {err && <p className="text-sm mt-3" style={{ color: 'var(--color-danger)' }}>{err}</p>}
         <div className="flex flex-col gap-2 mt-5">
-          <button onClick={saveAndLeave} disabled={saving} className={`${btn} text-white`} style={{ backgroundColor: 'var(--color-accent)' }}>{saving ? 'Saving...' : '💾 Save & leave'}</button>
-          <button onClick={() => go(pending)} disabled={saving} className={`${btn} border`} style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>🗑 Discard changes</button>
-          <button onClick={() => setPending(null)} disabled={saving} className={`${btn} text-[var(--color-text-muted)]`}>Keep editing</button>
+          <button onClick={saveAndLeave} disabled={saving} className={`${btn} text-white`} style={{ backgroundColor: 'var(--color-accent)' }}>{saving ? 'Saving...' : c.save}</button>
+          <button onClick={() => go(pending)} disabled={saving} className={`${btn} border`} style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>🗑 {c.discard}</button>
+          <button onClick={() => setPending(null)} disabled={saving} className={`${btn} text-[var(--color-text-muted)]`}>{c.keep}</button>
         </div>
       </div>
     </div>

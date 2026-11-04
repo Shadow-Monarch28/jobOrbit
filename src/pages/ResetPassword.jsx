@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PlanetLoader from '../components/PlanetLoader'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/logo'
@@ -76,7 +77,7 @@ export default function ResetPassword() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-bg)' }}>
-        <p className="text-[var(--color-text-muted)]">Loading...</p>
+        <PlanetLoader label="Loading..." />
       </div>
     )
   }

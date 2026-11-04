@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PlanetLoader from '../components/PlanetLoader'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { STATUS_OPTIONS } from '../lib/applicationStatus'
@@ -173,7 +174,7 @@ export default function Tracker() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-sm text-[var(--color-text-muted)]">Loading your applications...</p>
+        <PlanetLoader label="Loading your applications..." />
       </div>
     )
   }
