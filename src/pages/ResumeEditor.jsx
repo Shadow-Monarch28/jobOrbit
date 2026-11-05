@@ -13,7 +13,7 @@ import { SKILL_SUGGESTIONS } from '../lib/data/skills'
 import { RESUME_TEMPLATES, COVER_TEMPLATES, getResumeTemplate, getCoverTemplate } from '../lib/resumeTemplates'
 import {
   emptyResume, emptyCoverLetter, newExperience, newEducation, newProject,
-  tailorModelToJob, applyAiTailor, compactForAi, draftCoverLetter, normalizeModel,
+  tailorModelToJob, applyAiTailor, splitClassStream, joinClassStream, compactForAi, draftCoverLetter, normalizeModel,
 } from '../lib/resumeModel'
 import { evaluateAts } from '../lib/atsEvaluator'
 import { listDocs, listJobs, loadModel, saveDoc, setDefaultDoc, isResumeDoc, docTitle } from '../lib/builderApi'
@@ -71,7 +71,7 @@ function Bullets({ list, onChange, label = 'Bullets' }) {
       <div className="flex flex-col gap-2">
         {list.map((b, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <AutoTextarea value={b} rows={2} onChange={(e) => set(i, e.target.value)} className={inputCls} style={bs} placeholder="Start with a verb: Built, Led, Reduced..." />
+            <AutoTextarea value={b} rows={2} onChange={(e) => set(i, e.target.value)} className={inputCls} style={bs} placeholder="Describe what you did and the result" />
             <button type="button" aria-label="Remove bullet" onClick={() => onChange(list.filter((_, j) => j !== i))} className="px-2 py-1 rounded-lg border text-sm" style={bs}>×</button>
           </div>
         ))}
@@ -129,7 +129,7 @@ function LinksEditor({ links, onChange }) {
       <div className="flex flex-col gap-2">
         {list.map((l, i) => (
           <div key={l.id} className="grid grid-cols-[1fr_2fr_auto] gap-2 items-center">
-            <input value={l.label} onChange={(e) => set(i, { label: e.target.value })} autoFocus={i === list.length - 1 && !l.label && !l.url && list.length > 0} placeholder="Name, e.g. LinkedIn" aria-label="Link name" className={inputCls} style={bs} />
+            <input value={l.label} onChange={(e) => set(i, { label: e.target.value })} autoFocus={i === list.length - 1 && !l.label && !l.url && list.length > 0} placeholder="Enter a name for the link" aria-label="Link name" className={inputCls} style={bs} />
             <input value={l.url} onChange={(e) => set(i, { url: e.target.value, label: l.label && l.label !== linkLabelOf(l.url) ? l.label : linkLabelOf(e.target.value) })} placeholder="Paste the URL" aria-label="Link URL" className={inputCls} style={bs} />
             <button type="button" aria-label="Remove link" className={btn} style={bs} onClick={() => onChange(list.filter((_, j) => j !== i))}>✕</button>
           </div>
@@ -159,6 +159,12 @@ const move = (list, i, d) => {
 function ResumeForm({ model, setModel }) {
   const up = (patch) => setModel({ ...model, ...patch })
   const upContact = (patch) => up({ contact: { ...model.contact, ...patch } })
+  const cs = (e) => (e.classLevel !== undefined || e.stream !== undefined ? { classLevel: e.classLevel || '', stream: e.stream || '' } : splitClassStream(e.degree))
+  const setClassStream = (i, patch) => {
+    const cur = cs(model.education[i])
+    const next = { ...cur, ...patch }
+    upList('education', i, { ...next, degree: joinClassStream(next.classLevel.trim(), next.stream.trim()) })
+  }
   const upList = (key, i, patch) => up({ [key]: model[key].map((x, j) => (j === i ? { ...x, ...patch } : x)) })
   // "+ Add ..." creates the box, scrolls to it and puts the cursor in its first field
   const [justAdded, setJustAdded] = useState(null)
@@ -177,12 +183,12 @@ function ResumeForm({ model, setModel }) {
     <>
       <Card title="Basics">
         <div className="grid sm:grid-cols-2 gap-3">
-          <TextInput label="First name" value={nameParts.first} onChange={(v) => up({ firstName: v, lastName: nameParts.last, name: `${v} ${nameParts.last}`.trim() })} />
-          <TextInput label="Last name" value={nameParts.last} onChange={(v) => up({ firstName: nameParts.first, lastName: v, name: `${nameParts.first} ${v}`.trim() })} />
-          <TextInput label="Headline" value={model.headline} onChange={(v) => up({ headline: v })} placeholder="e.g. Data Analyst" />
-          <TextInput label="Email" type="email" value={model.contact.email} onChange={(v) => upContact({ email: v })} />
-          <TextInput label="Phone" value={model.contact.phone} onChange={(v) => upContact({ phone: v })} />
-          <TextInput label="Location" value={model.contact.location} onChange={(v) => upContact({ location: v })} />
+          <TextInput label="First name" value={nameParts.first} onChange={(v) => up({ firstName: v, lastName: nameParts.last, name: `${v} ${nameParts.last}`.trim() })} placeholder="Enter your first name" />
+          <TextInput label="Last name" value={nameParts.last} onChange={(v) => up({ firstName: nameParts.first, lastName: v, name: `${nameParts.first} ${v}`.trim() })} placeholder="Enter your last name" />
+          <TextInput label="Headline" value={model.headline} onChange={(v) => up({ headline: v })} placeholder="Enter the role you want, such as Data Analyst" />
+          <TextInput label="Email" type="email" value={model.contact.email} onChange={(v) => upContact({ email: v })} placeholder="Enter your email address" />
+          <TextInput label="Phone" value={model.contact.phone} onChange={(v) => upContact({ phone: v })} placeholder="Enter your phone number" />
+          <TextInput label="Location" value={model.contact.location} onChange={(v) => upContact({ location: v })} placeholder="Enter your city and country" />
           <LinksEditor links={model.contact.links} onChange={(links) => upContact({ links })} />
         </div>
       </Card>
@@ -196,9 +202,9 @@ function ResumeForm({ model, setModel }) {
         {model.experience.map((e, i) => (
           <EntryShell key={e.id} id={e.id} index={i} count={model.experience.length} onMove={(d) => up({ experience: move(model.experience, i, d) })} onRemove={() => up({ experience: model.experience.filter((_, j) => j !== i) })}>
             <div className="grid sm:grid-cols-2 gap-3">
-              <TextInput label="Job title" value={e.title} onChange={(v) => upList('experience', i, { title: v })} />
-              <TextInput label="Company" value={e.org} onChange={(v) => upList('experience', i, { org: v })} />
-              <TextInput label="Location" value={e.location} onChange={(v) => upList('experience', i, { location: v })} />
+              <TextInput label="Job title" value={e.title} onChange={(v) => upList('experience', i, { title: v })} placeholder="Enter your job title" />
+              <TextInput label="Company" value={e.org} onChange={(v) => upList('experience', i, { org: v })} placeholder="Enter the company name" />
+              <TextInput label="Location" value={e.location} onChange={(v) => upList('experience', i, { location: v })} placeholder="Enter the job location" />
               <PeriodInputs item={e} onChange={(patch) => upList('experience', i, patch)} currentLabel="I currently work here" />
             </div>
             <Bullets list={e.bullets} onChange={(b) => upList('experience', i, { bullets: b })} />
@@ -211,10 +217,10 @@ function ResumeForm({ model, setModel }) {
         {model.projects.map((p, i) => (
           <EntryShell key={p.id} id={p.id} index={i} count={model.projects.length} onMove={(d) => up({ projects: move(model.projects, i, d) })} onRemove={() => up({ projects: model.projects.filter((_, j) => j !== i) })}>
             <div className="grid sm:grid-cols-2 gap-3">
-              <TextInput label="Project name" value={p.name} onChange={(v) => upList('projects', i, { name: v })} />
-              <TextInput label="Link (shown as a clickable 'Link to project')" value={p.link} onChange={(v) => upList('projects', i, { link: v })} placeholder="github.com/you/project" />
-              <TextInput label="Role / stack (optional)" value={p.role} onChange={(v) => upList('projects', i, { role: v })} placeholder="e.g. Data Analyst" />
-              <TextInput label="Period (optional)" value={p.period} onChange={(v) => upList('projects', i, { period: v })} placeholder="Jun 2026 - Jul 2026" />
+              <TextInput label="Project name" value={p.name} onChange={(v) => upList('projects', i, { name: v })} placeholder="Enter the project name" />
+              <TextInput label="Link (shown as a clickable 'Link to project')" value={p.link} onChange={(v) => upList('projects', i, { link: v })} placeholder="Paste the project link" />
+              <TextInput label="Role / stack (optional)" value={p.role} onChange={(v) => upList('projects', i, { role: v })} placeholder="Enter your role in the project" />
+              <TextInput label="Period (optional)" value={p.period} onChange={(v) => upList('projects', i, { period: v })} placeholder="Enter the project period" />
             </div>
             <Bullets list={p.bullets} onChange={(b) => upList('projects', i, { bullets: b })} />
           </EntryShell>
@@ -232,15 +238,23 @@ function ResumeForm({ model, setModel }) {
                   <option value="school">School (10th, 12th, ...)</option>
                 </select>
               </Field>
-              {e.level === 'school'
-                ? <TextInput label="Class / stream" value={e.degree} onChange={(v) => upList('education', i, { degree: v })} placeholder="12th (Commerce)" />
-                : <TextInput label="Degree" value={e.degree} onChange={(v) => upList('education', i, { degree: v })} placeholder="Bachelor of Computer Applications" />}
-              <TextInput label={e.level === 'school' ? 'School' : 'College / University'} value={e.school} onChange={(v) => upList('education', i, { school: v })} />
-              <TextInput label="Location" value={e.location} onChange={(v) => upList('education', i, { location: v })} />
+              {e.level === 'school' ? (
+                <>
+                  <TextInput label="Class" value={cs(e).classLevel} onChange={(v) => setClassStream(i, { classLevel: v })} placeholder="Enter your class" />
+                  <TextInput label="Stream" value={cs(e).stream} onChange={(v) => setClassStream(i, { stream: v })} placeholder="Enter your stream, if you have one" />
+                  <TextInput label="School" value={e.school} onChange={(v) => upList('education', i, { school: v })} placeholder="Enter your school's name" />
+                </>
+              ) : (
+                <>
+                  <TextInput label="Degree" value={e.degree} onChange={(v) => upList('education', i, { degree: v })} placeholder="Enter your degree" />
+                  <TextInput label="College / University" value={e.school} onChange={(v) => upList('education', i, { school: v })} placeholder="Enter your college or university" />
+                </>
+              )}
+              <TextInput label="Location" value={e.location} onChange={(v) => upList('education', i, { location: v })} placeholder="City, state or country" />
               <PeriodInputs item={e} onChange={(patch) => upList('education', i, { ...patch, year: '' })} currentLabel="I'm still studying here" />
-              <TextInput label={e.level === 'school' ? 'Percentage' : 'GPA / CGPA / Percentage (optional)'} value={e.grade} onChange={(v) => upList('education', i, { grade: v })} placeholder={e.level === 'school' ? '80%' : '8.4 CGPA or 67%'} />
+              <TextInput label={e.level === 'school' ? 'Percentage' : 'GPA / CGPA / Percentage (optional)'} value={e.grade} onChange={(v) => upList('education', i, { grade: v })} placeholder={e.level === 'school' ? 'Enter your percentage' : 'Enter your CGPA or percentage'} />
             </div>
-            <TextInput label="Details (optional)" value={e.detail} onChange={(v) => upList('education', i, { detail: v })} />
+            <TextInput label="Details (optional)" value={e.detail} onChange={(v) => upList('education', i, { detail: v })} placeholder="Add a short note, such as honours or key subjects" />
           </EntryShell>
         ))}
       </Card>
@@ -257,7 +271,7 @@ function ResumeForm({ model, setModel }) {
         <Card title="Other sections">
           {model.extra.map((x, i) => (
             <EntryShell key={x.id} id={x.id} index={i} count={model.extra.length} onMove={(d) => up({ extra: move(model.extra, i, d) })} onRemove={() => up({ extra: model.extra.filter((_, j) => j !== i) })}>
-              <TextInput label="Heading" value={x.heading} onChange={(v) => upList('extra', i, { heading: v })} />
+              <TextInput label="Heading" value={x.heading} onChange={(v) => upList('extra', i, { heading: v })} placeholder="Enter the section heading" />
               <Bullets label="Lines" list={x.lines} onChange={(l) => upList('extra', i, { lines: l })} />
             </EntryShell>
           ))}
@@ -275,19 +289,19 @@ function CoverForm({ model, setModel }) {
     <>
       <Card title="You">
         <div className="grid sm:grid-cols-2 gap-3">
-          <TextInput label="First name" value={coverName.first} onChange={(v) => up({ firstName: v, lastName: coverName.last, name: `${v} ${coverName.last}`.trim() })} />
-          <TextInput label="Last name" value={coverName.last} onChange={(v) => up({ firstName: coverName.first, lastName: v, name: `${coverName.first} ${v}`.trim() })} />
-          <TextInput label="Email" value={model.contact.email} onChange={(v) => upContact({ email: v })} />
-          <TextInput label="Phone" value={model.contact.phone} onChange={(v) => upContact({ phone: v })} />
-          <TextInput label="Location" value={model.contact.location} onChange={(v) => upContact({ location: v })} />
+          <TextInput label="First name" value={coverName.first} onChange={(v) => up({ firstName: v, lastName: coverName.last, name: `${v} ${coverName.last}`.trim() })} placeholder="Enter your first name" />
+          <TextInput label="Last name" value={coverName.last} onChange={(v) => up({ firstName: coverName.first, lastName: v, name: `${coverName.first} ${v}`.trim() })} placeholder="Enter your last name" />
+          <TextInput label="Email" value={model.contact.email} onChange={(v) => upContact({ email: v })} placeholder="Enter your email address" />
+          <TextInput label="Phone" value={model.contact.phone} onChange={(v) => upContact({ phone: v })} placeholder="Enter your phone number" />
+          <TextInput label="Location" value={model.contact.location} onChange={(v) => upContact({ location: v })} placeholder="Enter your city and country" />
         </div>
       </Card>
       <Card title="Recipient">
         <div className="grid sm:grid-cols-2 gap-3">
-          <TextInput label="Date" value={model.date} onChange={(v) => up({ date: v })} />
-          <TextInput label="Addressed to" value={model.recipient} onChange={(v) => up({ recipient: v })} />
-          <TextInput label="Company" value={model.company} onChange={(v) => up({ company: v })} />
-          <TextInput label="Role" value={model.role} onChange={(v) => up({ role: v })} />
+          <TextInput label="Date" value={model.date} onChange={(v) => up({ date: v })} placeholder="Enter the date" />
+          <TextInput label="Addressed to" value={model.recipient} onChange={(v) => up({ recipient: v })} placeholder="Enter the hiring manager's name" />
+          <TextInput label="Company" value={model.company} onChange={(v) => up({ company: v })} placeholder="Enter the company you are writing to" />
+          <TextInput label="Role" value={model.role} onChange={(v) => up({ role: v })} placeholder="Enter the role you are applying for" />
         </div>
       </Card>
       <Card title="Letter" action={<button type="button" className={btn} style={bs} onClick={() => up({ paragraphs: [...model.paragraphs, ''] })}>+ Paragraph</button>}>
@@ -297,7 +311,7 @@ function CoverForm({ model, setModel }) {
             <button type="button" aria-label="Remove paragraph" onClick={() => up({ paragraphs: model.paragraphs.filter((_, j) => j !== i) })} className="px-2 py-1 rounded-lg border text-sm" style={bs}>×</button>
           </div>
         ))}
-        <TextInput label="Closing" value={model.closing} onChange={(v) => up({ closing: v })} />
+        <TextInput label="Closing" value={model.closing} onChange={(v) => up({ closing: v })} placeholder="Enter your sign-off, e.g. Sincerely," />
       </Card>
     </>
   )

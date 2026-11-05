@@ -149,6 +149,17 @@ function takeGrade(text) {
   return m ? { grade: m[1].trim(), rest: text.replace(m[0], ' ').replace(/\s+/g, ' ').trim() } : { grade: '', rest: text }
 }
 
+// "12th (Commerce + IP)" <-> class "12th" + stream "Commerce + IP"
+export function splitClassStream(degree) {
+  const m = String(degree || '').match(/^(.*?)\s*\((.*)\)\s*$/)
+  return m ? { classLevel: m[1].trim(), stream: m[2].trim() } : { classLevel: String(degree || '').trim(), stream: '' }
+}
+export const joinClassStream = (c, s) => (c && s ? `${c} (${s})` : c || s || '')
+export function withClassStream(e) {
+  if (e.level !== 'school' || e.classLevel !== undefined || e.stream !== undefined) return e
+  return { ...e, ...splitClassStream(e.degree) }
+}
+
 export const educationLevelOf = (e) => {
   const t = `${e.degree || ''} ${e.school || ''}`
   return SCHOOL_LEVEL.test(t) && !COLLEGE_WORDS.test(`${e.degree || ''}`) && !/\b(university|college|institute)\b/i.test(e.school || '') ? 'school' : 'college'
@@ -230,7 +241,7 @@ function parseEducation(lines) {
   return entries.map((e) => {
     const school = scrubText(e.school)
     const f = { ...e, school, degree: scrubText(e.degree), location: scrubText(e.location), detail: scrubText(e.detail) }
-    return { ...f, level: educationLevelOf(f) }
+    return withClassStream({ ...f, level: educationLevelOf(f) })
   })
 }
 
@@ -550,9 +561,9 @@ export function normalizeModel(m) {
   next.education = next.education.map((raw) => {
     const e = { ...raw, school: scrubText(raw.school), degree: scrubText(raw.degree), location: scrubText(raw.location), detail: scrubText(raw.detail) }
     const base = { level: e.level || educationLevelOf(e), grade: '', ...e }
-    if (e.start || e.end || !e.year) return { start: '', end: '', ...base }
+    if (e.start || e.end || !e.year) return withClassStream({ start: '', end: '', ...base })
     const p = splitPeriod(e.year)
-    return { ...base, start: p.start, end: p.end, year: '' }
+    return withClassStream({ ...base, start: p.start, end: p.end, year: '' })
   })
   return { ...next, extra: out.extra }
 }

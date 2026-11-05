@@ -3,7 +3,7 @@
 export default function PlanetLoader({ label = 'Loading...', size = 64, full = false, className = '' }) {
   const box = (
     <div className={`flex flex-col items-center justify-center gap-3 text-sm text-[var(--color-text-muted)] ${className}`} role="status" aria-live="polite">
-      <div className="jo-planet" style={{ width: size, height: size }} aria-hidden="true">
+      <div className="jo-loader" style={{ width: size, height: size }} aria-hidden="true">
         <svg viewBox="0 0 100 100" width={size} height={size}>
           <defs>
             <radialGradient id="jo-pl-body" cx="35%" cy="30%" r="75%">
@@ -12,11 +12,11 @@ export default function PlanetLoader({ label = 'Loading...', size = 64, full = f
               <stop offset="100%" stopColor="color-mix(in srgb, var(--color-accent) 45%, #000000)" />
             </radialGradient>
           </defs>
-          <ellipse cx="50" cy="52" rx="46" ry="12" fill="none" stroke="var(--color-accent)" strokeOpacity=".35" strokeWidth="2" transform="rotate(-20 50 52)" />
+          <ellipse cx="50" cy="52" rx="46" ry="12" fill="none" stroke="var(--color-accent)" strokeOpacity=".35" strokeWidth="2" transform="rotate(-35 50 52)" />
           <circle cx="50" cy="50" r="22" fill="url(#jo-pl-body)" />
-          <path d="M 4 58 Q 50 72 96 46" fill="none" stroke="var(--color-accent)" strokeOpacity=".75" strokeWidth="3" strokeLinecap="round" transform="rotate(-20 50 52)" clipPath="none" />
+          <path d="M 4 58 Q 50 72 96 46" fill="none" stroke="var(--color-accent)" strokeOpacity=".75" strokeWidth="3" strokeLinecap="round" transform="rotate(-35 50 52)" clipPath="none" />
         </svg>
-        <span className="jo-planet-moon" />
+        <span className="jo-loader-orbit"><span className="jo-loader-sweep"><span className="jo-loader-moon" /></span></span>
       </div>
       {label && <span>{label}</span>}
     </div>

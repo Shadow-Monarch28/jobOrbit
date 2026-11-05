@@ -589,17 +589,24 @@ input[type='number'] {
   border-color: #6250b7;
 }
 
-/* Planet loader (PlanetLoader.jsx) */
-.jo-planet { position: relative; }
-.jo-planet-moon {
-  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 9999px;
-  background: var(--color-text); opacity: .85;
-  animation: jo-moon 1.8s linear infinite;
+/* Planet loader (PlanetLoader.jsx). Own class names: .jo-planet is the page background planet. */
+.jo-loader { position: relative; isolation: isolate; }
+.jo-loader svg { position: relative; z-index: 0; overflow: visible; animation: jo-loader-bob 3.2s ease-in-out infinite; }
+/* The moon travels a tilted ellipse, bottom-left to top-right. x and y are two eased
+   swings a quarter turn apart, which draws the ellipse; the moon itself stays round. */
+.jo-loader-orbit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(-35deg); animation: jo-loader-z 1.1s step-end -0.55s infinite alternate; }
+.jo-loader-sweep { position: absolute; left: 0; top: 0; animation: jo-loader-x 1.1s ease-in-out infinite alternate; }
+.jo-loader-moon {
+  position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 9999px;
+  background: radial-gradient(circle at 32% 30%, #ffffff 0%, #e5e7eb 45%, #9ca3af 100%);
+  box-shadow: inset -2.5px -2px 3px rgba(17, 24, 39, .45), 0 0 6px rgba(255, 255, 255, .35);
+  animation: jo-loader-y 1.1s ease-in-out -0.55s infinite alternate;
 }
-.jo-planet svg { animation: jo-planet-bob 3.2s ease-in-out infinite; overflow: visible; }
-@keyframes jo-moon {
-  from { transform: rotate(0deg) translateX(34px) scaleY(.5) rotate(0deg); }
-  to { transform: rotate(360deg) translateX(34px) scaleY(.5) rotate(-360deg); }
+@keyframes jo-loader-x { from { transform: translateX(-38px); } to { transform: translateX(38px); } }
+@keyframes jo-loader-y {
+  0% { transform: translateY(-11px) scale(.8); opacity: .7; }
+  100% { transform: translateY(11px) scale(1.1); opacity: 1; }
 }
-@keyframes jo-planet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-@media (prefers-reduced-motion: reduce) { .jo-planet-moon, .jo-planet svg { animation: none; } }
+@keyframes jo-loader-z { 0% { z-index: -1; } 50% { z-index: 1; } }
+@keyframes jo-loader-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .jo-loader svg, .jo-loader-orbit, .jo-loader-sweep, .jo-loader-moon { animation: none; } }
