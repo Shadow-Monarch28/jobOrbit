@@ -1,14 +1,13 @@
 // Sources that are fetched server-side by the job-search edge function
 // (no CORS or key handling in the browser). Each returns the shared job shape
 // with the derived fields filled in.
+import { resilient, fetchJson } from './resilient'
 import { edgeFunctionUrl, deriveJobType, deriveExperienceLevel, deriveIndustryFromTags } from './shared'
 
 async function fetchProxied(source, q, label) {
   const params = new URLSearchParams({ source, q })
-  const res = await fetch(`${edgeFunctionUrl('job-search')}?${params.toString()}`)
-  if (!res.ok) throw new Error(`${label} proxy failed (${res.status})`)
-  const data = await res.json()
-  if (data.error) throw new Error(data.error)
+  const url = `${edgeFunctionUrl('job-search')}?${params.toString()}`
+  const data = await resilient({ key: `${source}:${params.toString()}`, label, load: () => fetchJson(url, label) })
 
   const jobs = (data.jobs ?? []).map((job) => ({
     ...job,

@@ -1,15 +1,10 @@
+import { resilient, fetchJson } from './resilient'
 import { edgeFunctionUrl, deriveJobType, deriveExperienceLevel } from './shared'
 
 export async function searchLever({ q = '' } = {}) {
   const params = new URLSearchParams({ source: 'lever', q })
-  const res = await fetch(`${edgeFunctionUrl('job-search')}?${params.toString()}`)
-
-  if (!res.ok) {
-    throw new Error(`Lever proxy failed (${res.status})`)
-  }
-
-  const data = await res.json()
-  if (data.error) throw new Error(data.error)
+  const url = `${edgeFunctionUrl('job-search')}?${params.toString()}`
+  const data = await resilient({ key: `lever:${params.toString()}`, label: 'Lever', load: () => fetchJson(url, 'Lever') })
 
   const jobs = (data.jobs ?? []).map((job) => ({
     ...job,

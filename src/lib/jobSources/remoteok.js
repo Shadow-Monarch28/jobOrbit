@@ -10,16 +10,11 @@
 
 const RAW_ENDPOINT = 'https://remoteok.com/api'
 
+import { resilient, fetchJson } from './resilient'
 import { stripHtml, deriveJobType, deriveExperienceLevel, deriveIndustryFromTags } from './shared'
 
 export async function searchRemoteOk({ q = '' } = {}) {
-  const res = await fetch(RAW_ENDPOINT)
-
-  if (!res.ok) {
-    throw new Error(`RemoteOK request failed (${res.status})`)
-  }
-
-  const raw = await res.json()
+  const raw = await resilient({ key: 'remoteok:board', label: 'RemoteOK', load: () => fetchJson(RAW_ENDPOINT, 'RemoteOK') })
 
   const jobs = raw
     .filter((job) => job && job.id && job.position)

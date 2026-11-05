@@ -78,27 +78,19 @@ Deno.serve(async (req: Request) => {
     const country = url.searchParams.get('country') ?? 'in'
 
     if (source === 'adzuna') {
-      return await handleAdzuna({ q, where, page, country })
+      return await guarded('Adzuna', `adzuna|${country}|${q.toLowerCase()}|${where.toLowerCase()}|${page}`, () => handleAdzuna({ q, where, page, country }))
     }
 
-    if (source === 'lever') {
-      const companiesParam = url.searchParams.get('companies')
-      const list = companiesParam
-        ? companiesParam.split(',').map((c) => c.trim()).filter(Boolean)
-        : DEFAULT_LEVER_COMPANIES
-      return await handleLever({ q, list })
-    }
+    const companiesParam = url.searchParams.get('companies') ?? ''
+    const ck = `${source}|${q.toLowerCase()}|${companiesParam}`
+    const companies = (fallback: string[]) =>
+      companiesParam ? companiesParam.split(',').map((c) => c.trim()).filter(Boolean) : fallback
 
-    if (source === 'remotive') return await handleRemotive({ q })
-    if (source === 'themuse') return await handleTheMuse({ q })
-    if (source === 'jobicy') return await handleJobicy({ q })
-    if (source === 'greenhouse') {
-      const companiesParam = url.searchParams.get('companies')
-      const list = companiesParam
-        ? companiesParam.split(',').map((c) => c.trim()).filter(Boolean)
-        : DEFAULT_GREENHOUSE_COMPANIES
-      return await handleGreenhouse({ q, list })
-    }
+    if (source === 'lever') return await guarded('Lever', ck, () => handleLever({ q, list: companies(DEFAULT_LEVER_COMPANIES) }))
+    if (source === 'remotive') return await guarded('Remotive', ck, () => handleRemotive({ q }))
+    if (source === 'themuse') return await guarded('The Muse', ck, () => handleTheMuse({ q }))
+    if (source === 'jobicy') return await guarded('Jobicy', ck, () => handleJobicy({ q }))
+    if (source === 'greenhouse') return await guarded('Greenhouse', ck, () => handleGreenhouse({ q, list: companies(DEFAULT_GREENHOUSE_COMPANIES) }))
 
     return jsonResponse({ error: 'Unknown or missing source.' }, 400)
   } catch (err) {
@@ -111,6 +103,54 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
+}
+
+// Shared by every source: a fetch with a timeout and one retry on a network error or a
+// server-side hiccup (never on 4xx, where a second try cannot help).
+async function fetchRetry(url: string, init: RequestInit = {}): Promise<Response> {
+  let last: Response | null = null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(9000) })
+      if (res.ok || (res.status < 500 && res.status !== 408)) return res
+      last = res
+    } catch (_err) {
+      last = null
+    }
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 600))
+  }
+  if (last) return last
+  throw new Error('unreachable')
+}
+
+// Every source answer is remembered for 10 minutes. If a source then fails, the last good
+// answer (up to 6 hours old) is returned instead of an error, so one bad moment upstream
+// never empties someone's search.
+const SOURCE_CACHE = new Map<string, { at: number; body: string }>()
+const FRESH_MS = 10 * 60 * 1000
+const STALE_MS = 6 * 60 * 60 * 1000
+
+async function guarded(label: string, key: string, run: () => Promise<Response>): Promise<Response> {
+  const hit = SOURCE_CACHE.get(key)
+  const asJson = (body: string) => new Response(body, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  if (hit && Date.now() - hit.at < FRESH_MS) return asJson(hit.body)
+
+  let res: Response
+  try {
+    res = await run()
+  } catch (err) {
+    console.error(label, 'failed', String(err))
+    res = jsonResponse({ error: `${label} did not answer.`, code: 'unreachable' }, 502)
+  }
+
+  if (res.ok) {
+    if (SOURCE_CACHE.size > 300) SOURCE_CACHE.clear()
+    SOURCE_CACHE.set(key, { at: Date.now(), body: await res.clone().text() })
+    return res
+  }
+  console.error(label, 'upstream error', res.status)
+  if (hit && Date.now() - hit.at < STALE_MS) return asJson(hit.body)
+  return res
 }
 
 // Adzuna's free plan is small (about 25 calls a minute and 250 a day), and an
@@ -223,7 +263,7 @@ async function handleAdzuna({
 async function handleLever({ q, list }: { q: string; list: string[] }) {
   const results = await Promise.allSettled(
     list.map(async (company) => {
-      const res = await fetch(`https://api.lever.co/v0/postings/${company}?mode=json`)
+      const res = await fetchRetry(`https://api.lever.co/v0/postings/${company}?mode=json`)
       if (!res.ok) return []
       const postings = await res.json()
       return postings.map((job: any) => {
@@ -276,8 +316,8 @@ async function handleLever({ q, list }: { q: string; list: string[] }) {
 
 async function handleRemotive({ q }: { q: string }) {
   const apiUrl = `https://remotive.com/api/remote-jobs?limit=100${q ? `&search=${encodeURIComponent(q)}` : ''}`
-  const res = await fetch(apiUrl)
-  if (!res.ok) return jsonResponse({ error: `Remotive request failed (${res.status})` }, 502)
+  const res = await fetchRetry(apiUrl)
+  if (!res.ok) return jsonResponse({ error: `Remotive answered with an error (${res.status}).`, code: res.status === 429 ? 'rate_limit' : 'upstream' }, res.status === 429 ? 429 : 502)
   const data = await res.json()
 
   const jobs = (data.jobs ?? []).map((job: any) => ({
@@ -303,14 +343,14 @@ async function handleRemotive({ q }: { q: string }) {
 async function handleTheMuse({ q }: { q: string }) {
   const pages = await Promise.allSettled(
     [1, 2, 3].map(async (page) => {
-      const res = await fetch(`https://www.themuse.com/api/public/jobs?page=${page}`)
+      const res = await fetchRetry(`https://www.themuse.com/api/public/jobs?page=${page}`)
       if (!res.ok) throw new Error(`The Muse request failed (${res.status})`)
       return (await res.json()).results ?? []
     })
   )
   const results = pages.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap((r) => r.value)
   if (results.length === 0 && pages.every((r) => r.status === 'rejected')) {
-    return jsonResponse({ error: 'The Muse request failed.' }, 502)
+    return jsonResponse({ error: 'The Muse answered with an error.', code: 'upstream' }, 502)
   }
 
   const jobs = results
@@ -340,8 +380,8 @@ async function handleTheMuse({ q }: { q: string }) {
 }
 
 async function handleJobicy({ q }: { q: string }) {
-  const res = await fetch(`https://jobicy.com/api/v2/remote-jobs?count=50${q ? `&tag=${encodeURIComponent(q)}` : ''}`)
-  if (!res.ok) return jsonResponse({ error: `Jobicy request failed (${res.status})` }, 502)
+  const res = await fetchRetry(`https://jobicy.com/api/v2/remote-jobs?count=50${q ? `&tag=${encodeURIComponent(q)}` : ''}`)
+  if (!res.ok) return jsonResponse({ error: `Jobicy answered with an error (${res.status}).`, code: res.status === 429 ? 'rate_limit' : 'upstream' }, res.status === 429 ? 429 : 502)
   const data = await res.json()
 
   const jobs = (data.jobs ?? []).map((job: any) => {
@@ -371,7 +411,7 @@ async function handleJobicy({ q }: { q: string }) {
 async function handleGreenhouse({ q, list }: { q: string; list: string[] }) {
   const results = await Promise.allSettled(
     list.map(async (company) => {
-      const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${company}/jobs?content=true`)
+      const res = await fetchRetry(`https://boards-api.greenhouse.io/v1/boards/${company}/jobs?content=true`)
       if (!res.ok) return []
       const data = await res.json()
       return (data.jobs ?? []).map((job: any) => {

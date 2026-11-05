@@ -5,16 +5,11 @@
 
 const RAW_ENDPOINT = 'https://www.arbeitnow.com/api/job-board-api'
 
+import { resilient, fetchJson } from './resilient'
 import { stripHtml, deriveJobType, deriveExperienceLevel, deriveIndustryFromTags } from './shared'
 
 export async function searchArbeitnow({ q = '' } = {}) {
-  const res = await fetch(RAW_ENDPOINT)
-
-  if (!res.ok) {
-    throw new Error(`Arbeitnow request failed (${res.status})`)
-  }
-
-  const raw = await res.json()
+  const raw = await resilient({ key: 'arbeitnow:board', label: 'Arbeitnow', load: () => fetchJson(RAW_ENDPOINT, 'Arbeitnow') })
   const list = raw.data ?? []
 
   const jobs = list.map((job) => {
