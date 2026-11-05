@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { parseLocation, cityVariants } from '../lib/data/locations'
 import { searchAllJobs } from '../lib/jobSources'
 import { searchAdzuna } from '../lib/jobSources/adzuna'
 import { API_SOURCE_KEYS } from '../lib/jobSources/sourceMeta'
@@ -41,7 +42,9 @@ function matchesLocation(text, chips) {
   if (chips.length === 0) return true
   const hay = text.toLowerCase()
   return chips.some((chip) => {
-    const c = chip.toLowerCase()
+    const loc = parseLocation(chip)
+    if (loc.city) return cityVariants(loc.city).some((v) => hay.includes(v)) // the country part only steers the source search
+    const c = (loc.country ?? loc.text).toLowerCase()
     if (hay.includes(c)) return true
     return (LOCATION_ALIASES[c] ?? []).some((alias) =>
       alias.length <= 3 ? new RegExp(`(^|[^a-z])${alias.replace('.', '\\.')}([^a-z]|$)`).test(hay) : hay.includes(alias)

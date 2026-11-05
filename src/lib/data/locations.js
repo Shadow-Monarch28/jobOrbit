@@ -1,3 +1,5 @@
+import { CITY_SUGGESTIONS } from './cities'
+
 // Every country, with the most-searched ones first. Free-text entry still
 // works for cities or regions.
 const POPULAR = ['India', 'United States', 'United Kingdom', 'Canada', 'Germany', 'Singapore', 'Australia', 'United Arab Emirates']
@@ -37,4 +39,30 @@ const ALL_COUNTRIES = [
   'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
 ]
 
-export const LOCATION_SUGGESTIONS = ['Remote / Worldwide', ...POPULAR, ...ALL_COUNTRIES]
+export const LOCATION_SUGGESTIONS = ['Remote / Worldwide', ...POPULAR, ...ALL_COUNTRIES, ...CITY_SUGGESTIONS]
+
+const COUNTRY_SET = new Set([...POPULAR, ...ALL_COUNTRIES].map((c) => c.toLowerCase()))
+
+// Cities that jobs are often written with another name for.
+export const CITY_ALIASES = {
+  bengaluru: ['bangalore'], gurgaon: ['gurugram'], mumbai: ['bombay'], chennai: ['madras'], kolkata: ['calcutta'],
+  'new delhi': ['delhi', 'ncr'], delhi: ['new delhi', 'ncr'], pune: ['poona'], kochi: ['cochin'], thiruvananthapuram: ['trivandrum'],
+  vadodara: ['baroda'], mysuru: ['mysore'], visakhapatnam: ['vizag'], 'greater noida': ['noida'], noida: ['greater noida'],
+  'new york city': ['new york', 'nyc'], 'san francisco': ['sf', 'bay area'], 'ho chi minh city': ['saigon'], 'mexico city': ['cdmx'],
+  'são paulo': ['sao paulo'], 'zürich': ['zurich'], 'münchen': ['munich'], 'köln': ['cologne'], 'kyiv': ['kiev'],
+}
+
+/** "Gurgaon, India" -> { city: 'Gurgaon', country: 'India' }; "India" -> { country: 'India' }; other text -> { text }. */
+export function parseLocation(chip = '') {
+  const t = String(chip).trim()
+  const i = t.lastIndexOf(',')
+  if (i > 0) {
+    const country = t.slice(i + 1).trim()
+    if (COUNTRY_SET.has(country.toLowerCase())) return { city: t.slice(0, i).trim(), country }
+  }
+  if (COUNTRY_SET.has(t.toLowerCase())) return { country: t }
+  return { text: t }
+}
+
+/** Every spelling worth matching for a city. */
+export const cityVariants = (city) => [city.toLowerCase(), ...(CITY_ALIASES[city.toLowerCase()] ?? [])]

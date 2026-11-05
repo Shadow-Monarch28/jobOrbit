@@ -113,6 +113,17 @@ function jsonResponse(body: unknown, status = 200) {
   })
 }
 
+// Adzuna's free plan is small (about 25 calls a minute and 250 a day), and an
+// edge function instance lives only for a short while. So: remember recent answers,
+// retry once on a hiccup, and say clearly why a call failed.
+const ADZUNA_COUNTRY_CODES = new Set(['gb', 'us', 'at', 'au', 'be', 'br', 'ca', 'ch', 'de', 'es', 'fr', 'in', 'it', 'mx', 'nl', 'nz', 'pl', 'sg', 'za'])
+const ADZUNA_CACHE = new Map<string, { at: number; body: unknown }>()
+const ADZUNA_TTL_MS = 10 * 60 * 1000
+
+function adzunaError(code: string, message: string, upstream?: number) {
+  return jsonResponse({ error: message, code, upstream }, code === 'rate_limit' ? 429 : 502)
+}
+
 async function handleAdzuna({
   q,
   where,
@@ -128,8 +139,17 @@ async function handleAdzuna({
   const appKey = Deno.env.get('ADZUNA_APP_KEY')
 
   if (!appId || !appKey) {
-    return jsonResponse({ error: 'Adzuna credentials not configured on the server.' }, 500)
+    return adzunaError('not_configured', 'Adzuna is not set up on the server (missing ADZUNA_APP_ID or ADZUNA_APP_KEY).')
   }
+
+  const site = ADZUNA_COUNTRY_CODES.has(country.toLowerCase()) ? country.toLowerCase() : 'in'
+  const safePage = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1
+  const what = q.replace(/[^\p{L}\p{N}\s+#.&/-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 100)
+  const place = where.trim().slice(0, 100)
+
+  const key = `${site}|${what.toLowerCase()}|${place.toLowerCase()}|${safePage}`
+  const hit = ADZUNA_CACHE.get(key)
+  if (hit && Date.now() - hit.at < ADZUNA_TTL_MS) return jsonResponse(hit.body)
 
   const params = new URLSearchParams({
     app_id: appId,
@@ -137,14 +157,30 @@ async function handleAdzuna({
     results_per_page: '20',
     'content-type': 'application/json',
   })
-  if (q) params.set('what', q)
-  if (where) params.set('where', where)
+  if (what) params.set('what', what)
+  if (place) params.set('where', place)
 
-  const apiUrl = `https://api.adzuna.com/v1/api/jobs/${country}/search/${page}?${params.toString()}`
-  const res = await fetch(apiUrl)
+  const apiUrl = `https://api.adzuna.com/v1/api/jobs/${site}/search/${safePage}?${params.toString()}`
 
+  let res: Response | null = null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) })
+    } catch (_err) {
+      res = null
+    }
+    // Retry once on a network failure or a server-side hiccup; never on rate limits or bad keys.
+    if (res && (res.ok || (res.status < 500 && res.status !== 408))) break
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 700))
+  }
+
+  if (!res) return adzunaError('unreachable', 'Adzuna did not answer in time.')
+  if (res.status === 429) return adzunaError('rate_limit', "Adzuna's free request limit has been reached. It frees up again soon.", 429)
+  if (res.status === 401 || res.status === 403) return adzunaError('auth', 'Adzuna rejected the API keys. Check ADZUNA_APP_ID and ADZUNA_APP_KEY in Supabase.', res.status)
   if (!res.ok) {
-    return jsonResponse({ error: `Adzuna request failed (${res.status})` }, 502)
+    const detail = (await res.text().catch(() => '')).slice(0, 160)
+    console.error('adzuna upstream', res.status, detail)
+    return adzunaError('upstream', `Adzuna answered with an error (${res.status}).`, res.status)
   }
 
   const data = await res.json()
@@ -178,7 +214,10 @@ async function handleAdzuna({
     }
   })
 
-  return jsonResponse({ jobs, count: data.count ?? jobs.length, page })
+  const body = { jobs, count: data.count ?? jobs.length, page: safePage }
+  if (ADZUNA_CACHE.size > 200) ADZUNA_CACHE.clear()
+  ADZUNA_CACHE.set(key, { at: Date.now(), body })
+  return jsonResponse(body)
 }
 
 async function handleLever({ q, list }: { q: string; list: string[] }) {

@@ -12,7 +12,10 @@ export default function MultiSelectInput({ values, onChange, suggestions = [], p
     const remaining = suggestions.filter((s) => !values.includes(s))
     if (!inputText.trim()) return remaining.slice(0, MAX_SUGGESTIONS)
     const needle = inputText.toLowerCase()
-    return remaining.filter((s) => s.toLowerCase().includes(needle)).slice(0, MAX_SUGGESTIONS)
+    const hits = remaining.filter((s) => s.toLowerCase().includes(needle))
+    // names that start with what was typed come first ("Del" -> Delhi before Cuddalore-Delta)
+    hits.sort((a, b) => Number(b.toLowerCase().startsWith(needle)) - Number(a.toLowerCase().startsWith(needle)))
+    return hits.slice(0, MAX_SUGGESTIONS)
   }, [suggestions, values, inputText])
 
   function addChip(value) {

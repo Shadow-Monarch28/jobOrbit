@@ -153,7 +153,7 @@ export default function Search() {
             values={locationChips}
             onChange={setLocationChips}
             suggestions={LOCATION_SUGGESTIONS}
-            placeholder="Country — e.g. India"
+            placeholder="Country or city — e.g. India, Gurgaon"
           />
         </div>
 
@@ -274,8 +274,9 @@ export default function Search() {
       {errors.length > 0 && (
         <div className="rounded-lg border px-4 py-3 mb-4 text-sm" style={{ borderColor: 'var(--color-warning)', color: 'var(--color-warning)' }}>
           {errors.map((e, i) => (
-            <div key={i}>{SOURCE_LABEL[e.source] ?? e.source} is unavailable right now ({e.message}). Showing results from the other sources.</div>
+            <div key={i}>{SOURCE_LABEL[e.source] ?? e.source}: {e.message} Showing results from the other sources.</div>
           ))}
+          <button onClick={runSearch} className="mt-2 px-3 py-1 rounded-lg border text-xs" style={{ borderColor: 'var(--color-warning)' }}>Try again</button>
         </div>
       )}
 
@@ -289,7 +290,9 @@ export default function Search() {
 
       {!loading && hasSearched && jobs.length === 0 && !matchResumeOnly && (
         <div className="text-center py-16 text-[var(--color-text-muted)]">
-          No jobs matched your filters. Try loosening the salary range, job type, or date-posted filter, or enable more sources.
+          {errors.some((e) => e.source === 'adzuna')
+            ? 'Local job listings come from Adzuna, which is not responding right now, so nothing could be shown. Your filters are fine. Press "Try again" above in a minute.'
+            : 'No jobs matched your filters. Try loosening the salary range, job type, or date-posted filter, or enable more sources.'}
         </div>
       )}
 
