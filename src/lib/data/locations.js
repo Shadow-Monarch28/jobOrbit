@@ -41,6 +41,23 @@ const ALL_COUNTRIES = [
 
 export const LOCATION_SUGGESTIONS = ['Remote / Worldwide', ...POPULAR, ...ALL_COUNTRIES, ...CITY_SUGGESTIONS]
 
+// Cities grouped by country, each country's list A to Z, for the Country -> City dropdowns.
+export const CITIES_BY_COUNTRY = (() => {
+  const map = {}
+  for (const label of CITY_SUGGESTIONS) {
+    const i = label.lastIndexOf(', ')
+    ;(map[label.slice(i + 2)] ??= []).push(label.slice(0, i))
+  }
+  for (const k of Object.keys(map)) map[k] = [...new Set(map[k])].sort((a, b) => a.localeCompare(b))
+  return map
+})()
+
+// Countries for the dropdown: the most-searched first, then everything else A to Z.
+export const COUNTRY_OPTIONS = (() => {
+  const rest = [...new Set([...ALL_COUNTRIES, ...Object.keys(CITIES_BY_COUNTRY)])].filter((c) => !POPULAR.includes(c)).sort((a, b) => a.localeCompare(b))
+  return { popular: POPULAR, rest }
+})()
+
 const COUNTRY_SET = new Set([...POPULAR, ...ALL_COUNTRIES].map((c) => c.toLowerCase()))
 
 // Cities that jobs are often written with another name for.

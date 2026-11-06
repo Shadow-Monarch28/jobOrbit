@@ -7,7 +7,7 @@ import HelpTip from '../components/HelpTip'
 import SourceDropdown from '../components/SourceDropdown'
 import { SOURCE_LABEL } from '../lib/jobSources/sourceMeta'
 import { JOB_TITLE_SUGGESTIONS } from '../lib/data/jobTitles'
-import { LOCATION_SUGGESTIONS } from '../lib/data/locations'
+import { COUNTRY_OPTIONS, CITIES_BY_COUNTRY, parseLocation } from '../lib/data/locations'
 import { SKILL_SUGGESTIONS } from '../lib/data/skills'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -127,6 +127,16 @@ export default function Search() {
     showMoreLocally,
   } = useJobSearch({ jobPredicate })
 
+  // Country and City are two dropdowns; the search hook keeps one location chip
+  // ("India" or "Gurgaon, India"), so these are just a view over it.
+  const firstLocation = locationChips[0] ?? ''
+  const parsedLocation = parseLocation(firstLocation)
+  const country = parsedLocation.country ?? firstLocation
+  const city = parsedLocation.city ?? ''
+  const cityOptions = CITIES_BY_COUNTRY[country] ?? []
+  const pickCountry = (c) => setLocationChips(c ? [c] : [])
+  const pickCity = (c) => setLocationChips(c ? [`${c}, ${country}`] : country ? [country] : [])
+
   const borderStyle = { borderColor: 'var(--color-border)' }
 
   return (
@@ -149,12 +159,27 @@ export default function Search() {
             suggestions={JOB_TITLE_SUGGESTIONS}
             placeholder="Job title(s) — e.g. Frontend Developer"
           />
-          <MultiSelectInput
-            values={locationChips}
-            onChange={setLocationChips}
-            suggestions={LOCATION_SUGGESTIONS}
-            placeholder="Country or city — e.g. India, Gurgaon"
-          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FilterField label="Country">
+            <select value={country} onChange={(e) => pickCountry(e.target.value)} className={selectClass} style={borderStyle}>
+              <option value="">Any</option>
+              <option value="Remote / Worldwide">Remote / Worldwide</option>
+              <optgroup label="Popular">
+                {COUNTRY_OPTIONS.popular.map((c) => <option key={c} value={c}>{c}</option>)}
+              </optgroup>
+              <optgroup label="All countries">
+                {COUNTRY_OPTIONS.rest.map((c) => <option key={c} value={c}>{c}</option>)}
+              </optgroup>
+            </select>
+          </FilterField>
+          <FilterField label="City">
+            <select value={city} onChange={(e) => pickCity(e.target.value)} disabled={!country || cityOptions.length === 0} className={`${selectClass} disabled:opacity-50 disabled:cursor-not-allowed`} style={borderStyle} aria-label="City">
+              <option value="">{!country ? 'Pick a country first' : cityOptions.length === 0 ? 'No cities listed' : 'Any city'}</option>
+              {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </FilterField>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -267,7 +292,7 @@ export default function Search() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-[var(--color-text-muted)] w-28 shrink-0">Sources</span>
-          <SourceDropdown selected={activeSources} onChange={setActiveSources} title={titleChips[0] ?? ''} country={locationChips[0] ?? ''} showLinks={isAdmin} />
+          <SourceDropdown selected={activeSources} onChange={setActiveSources} title={titleChips[0] ?? ''} country={city || country} showLinks={isAdmin} />
         </div>
       </div>
 
