@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { parseLocation, cityVariants } from '../lib/data/locations'
 import { searchAllJobs } from '../lib/jobSources'
 import { searchAdzuna } from '../lib/jobSources/adzuna'
@@ -144,7 +144,8 @@ export function useJobSearch({ jobPredicate } = {}) {
   // reliably filter by location server-side, so relying on their own
   // filtering alone lets unrelated-country jobs leak through. Filtering here
   // against each job's own location/country field is what actually fixes that.
-  let filteredJobs = jobs.filter((job) => {
+  const filteredJobs = useMemo(() => {
+  let list = jobs.filter((job) => {
     if (!matchesAny(job.title, titleChips)) return false
     if (!matchesLocation(`${job.location} ${job.country ?? ''}`, locationChips)) return false
     if (skillChips.length > 0) {
@@ -181,16 +182,16 @@ export function useJobSearch({ jobPredicate } = {}) {
     return true
   })
 
-  filteredJobs = [...filteredJobs]
+  list = [...list]
   if (sortBy === 'newest') {
-    filteredJobs.sort((a, b) => {
+    list.sort((a, b) => {
       if (!a.postedAt && !b.postedAt) return 0
       if (!a.postedAt) return 1
       if (!b.postedAt) return -1
       return new Date(b.postedAt) - new Date(a.postedAt)
     })
   } else if (sortBy === 'salary_high' || sortBy === 'salary_low') {
-    filteredJobs.sort((a, b) => {
+    list.sort((a, b) => {
       const aVal = a.salaryMax ?? a.salaryMin
       const bVal = b.salaryMax ?? b.salaryMin
       if (aVal == null && bVal == null) return 0
@@ -199,8 +200,11 @@ export function useJobSearch({ jobPredicate } = {}) {
       return sortBy === 'salary_high' ? bVal - aVal : aVal - bVal
     })
   } else if (sortBy === 'best_match') {
-    filteredJobs.sort((a, b) => matchScore(b, titleChips) - matchScore(a, titleChips))
+    list.sort((a, b) => matchScore(b, titleChips) - matchScore(a, titleChips))
   }
+  return list
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, titleChips, locationChips, skillChips, workplaceFilter, jobTypeFilter, experienceFilter, industryFilter, hasSalaryRange, includeUnknownSalary, salaryMinInput, salaryMaxInput, datePostedFilter, jobPredicate, sortBy])
 
   const visibleJobs = filteredJobs.slice(0, visibleCount)
   const availableIndustries = INDUSTRY_OPTIONS

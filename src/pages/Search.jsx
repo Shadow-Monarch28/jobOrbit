@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { computeMatchScore } from '../lib/matchingEngine'
 import { useJobSearch } from '../hooks/useJobSearch'
 import JobCard from '../components/JobCard'
@@ -89,14 +89,15 @@ export default function Search() {
     const st = applicationStatusMap[`${job.source}:${job.sourceId}`]
     return st === 'not_applied' ? undefined : st
   }
-  const jobPredicate = (job) => {
+  const jobPredicate = useCallback((job) => {
     if (trackedStatus(job)) return false
     if (matchResumeOnly && defaultResume) {
       const { score } = computeMatchScore(defaultResume.parsed_skills ?? [], job)
       if (score === null || score <= MATCH_MIN) return false
     }
     return true
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applicationStatusMap, matchResumeOnly, defaultResume])
 
   const {
     titleChips, setTitleChips,
@@ -157,7 +158,7 @@ export default function Search() {
             values={titleChips}
             onChange={setTitleChips}
             suggestions={JOB_TITLE_SUGGESTIONS}
-            placeholder="Job title(s) — e.g. Frontend Developer"
+            placeholder="Job title(s)"
           />
         </div>
 
@@ -165,7 +166,6 @@ export default function Search() {
           <FilterField label="Country">
             <select value={country} onChange={(e) => pickCountry(e.target.value)} className={selectClass} style={borderStyle}>
               <option value="">Any</option>
-              <option value="Remote / Worldwide">Remote / Worldwide</option>
               <optgroup label="Popular">
                 {COUNTRY_OPTIONS.popular.map((c) => <option key={c} value={c}>{c}</option>)}
               </optgroup>

@@ -39,7 +39,7 @@ const ALL_COUNTRIES = [
   'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
 ]
 
-export const LOCATION_SUGGESTIONS = ['Remote / Worldwide', ...POPULAR, ...ALL_COUNTRIES, ...CITY_SUGGESTIONS]
+export const LOCATION_SUGGESTIONS = [...POPULAR, ...ALL_COUNTRIES, ...CITY_SUGGESTIONS]
 
 // Cities grouped by country, each country's list A to Z, for the Country -> City dropdowns.
 export const CITIES_BY_COUNTRY = (() => {
