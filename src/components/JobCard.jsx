@@ -83,6 +83,9 @@ function JobCard({ job, applicationStatus, defaultResume, onApplied }) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <h3 className="font-heading text-base font-semibold leading-snug">{job.title}</h3>
+          {job.translated && (
+            <span title={`Original title: ${job.originalTitle}`} className="mt-1 inline-block rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[10px] text-[var(--color-text-muted)]">Translated to English</span>
+          )}
           <p className="text-sm text-[var(--color-text-muted)] mt-0.5">{job.company}</p>
         </div>
         <div className="flex flex-row sm:flex-col flex-wrap items-start sm:items-end gap-1.5 shrink-0">

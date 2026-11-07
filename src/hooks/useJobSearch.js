@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { parseLocation, cityVariants } from '../lib/data/locations'
 import { searchAllJobs } from '../lib/jobSources'
+import { translateForeignJobs } from '../lib/translate'
 import { searchAdzuna } from '../lib/jobSources/adzuna'
 import { API_SOURCE_KEYS } from '../lib/jobSources/sourceMeta'
 import { INDUSTRY_OPTIONS, categorizeJob } from '../lib/data/jobCatalog'
@@ -97,6 +98,18 @@ export function useJobSearch({ jobPredicate } = {}) {
     setLoading(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleChips, locationChips, apiSourcesKey])
+
+  // Non-English listings are translated in the background; each one swaps in
+  // as soon as it is ready, so results appear instantly and read as English a moment later.
+  useEffect(() => {
+    if (jobs.length === 0) return
+    let cancelled = false
+    translateForeignJobs(jobs, (t) => {
+      if (cancelled) return
+      setJobs((prev) => prev.map((j) => (j.id === t.id ? t : j)))
+    })
+    return () => { cancelled = true }
+  }, [jobs])
 
   useEffect(() => {
     runSearch()
