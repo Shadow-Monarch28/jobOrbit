@@ -31,27 +31,40 @@ export function looksNonEnglish(job) {
   return hits === 0 && accents > 0
 }
 
+function parse(data) {
+  const out = (data?.[0] ?? []).map((seg) => seg?.[0] ?? '').join('').trim()
+  if (!out) throw new Error('empty translation')
+  return out
+}
+
 async function translateText(text) {
   if (!text) return text
   if (cache.has(text)) return cache.get(text)
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `q=${encodeURIComponent(text)}`,
-  })
-  if (!res.ok) throw new Error(`translate ${res.status}`)
-  const data = await res.json()
-  const out = (data?.[0] ?? []).map((seg) => seg?.[0] ?? '').join('').trim()
-  if (!out) throw new Error('empty translation')
+  let out
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `q=${encodeURIComponent(text)}`,
+    })
+    if (!res.ok) throw new Error(`translate ${res.status}`)
+    out = parse(await res.json())
+  } catch {
+    // Fallback: GET works from any origin, but URLs are length-limited.
+    const res = await fetch(`${ENDPOINT}&q=${encodeURIComponent(text.slice(0, 900))}`)
+    if (!res.ok) throw new Error(`translate ${res.status}`)
+    out = parse(await res.json())
+  }
   cache.set(text, out)
   return out
 }
 
 async function translateJob(job) {
   const [title, description] = await Promise.all([
-    translateText(job.title),
-    translateText((job.description ?? '').slice(0, 1500)),
+    translateText(job.title).catch(() => job.title),
+    translateText((job.description ?? '').slice(0, 1500)).catch(() => job.description),
   ])
+  if (title === job.title && description === job.description) throw new Error('not translated')
   return { ...job, title, description, originalTitle: job.title, translated: true }
 }
 

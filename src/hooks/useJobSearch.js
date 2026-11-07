@@ -53,21 +53,44 @@ function matchesLocation(text, chips) {
   })
 }
 
-export function useJobSearch({ jobPredicate } = {}) {
-  const [titleChips, setTitleChips] = useState([])
-  const [locationChips, setLocationChips] = useState([])
-  const [skillChips, setSkillChips] = useState([])
+const STORE_KEY = 'jo-discovery-filters'
 
-  const [workplaceFilter, setWorkplaceFilter] = useState('any')
-  const [jobTypeFilter, setJobTypeFilter] = useState('any')
-  const [experienceFilter, setExperienceFilter] = useState('any')
-  const [industryFilter, setIndustryFilter] = useState('')
-  const [salaryMinInput, setSalaryMinInput] = useState('')
-  const [salaryMaxInput, setSalaryMaxInput] = useState('')
-  const [includeUnknownSalary, setIncludeUnknownSalary] = useState(true)
-  const [datePostedFilter, setDatePostedFilter] = useState('any')
-  const [sortBy, setSortBy] = useState('relevance')
-  const [activeSources, setActiveSources] = useState(ALL_SOURCES)
+// Like useState, but remembered for the browser tab, so coming back from a
+// job application keeps the country, city and every other filter as left.
+function useSticky(name, initial) {
+  const [value, setValue] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) ?? '{}')
+      return name in saved ? saved[name] : initial
+    } catch {
+      return initial
+    }
+  })
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) ?? '{}')
+      saved[name] = value
+      sessionStorage.setItem(STORE_KEY, JSON.stringify(saved))
+    } catch { /* storage unavailable */ }
+  }, [name, value])
+  return [value, setValue]
+}
+
+export function useJobSearch({ jobPredicate } = {}) {
+  const [titleChips, setTitleChips] = useSticky('titleChips', [])
+  const [locationChips, setLocationChips] = useSticky('locationChips', [])
+  const [skillChips, setSkillChips] = useSticky('skillChips', [])
+
+  const [workplaceFilter, setWorkplaceFilter] = useSticky('workplaceFilter', 'any')
+  const [jobTypeFilter, setJobTypeFilter] = useSticky('jobTypeFilter', 'any')
+  const [experienceFilter, setExperienceFilter] = useSticky('experienceFilter', 'any')
+  const [industryFilter, setIndustryFilter] = useSticky('industryFilter', '')
+  const [salaryMinInput, setSalaryMinInput] = useSticky('salaryMinInput', '')
+  const [salaryMaxInput, setSalaryMaxInput] = useSticky('salaryMaxInput', '')
+  const [includeUnknownSalary, setIncludeUnknownSalary] = useSticky('includeUnknownSalary', true)
+  const [datePostedFilter, setDatePostedFilter] = useSticky('datePostedFilter', 'any')
+  const [sortBy, setSortBy] = useSticky('sortBy', 'relevance')
+  const [activeSources, setActiveSources] = useSticky('activeSources', ALL_SOURCES)
 
   const [jobs, setJobs] = useState([])
   const [errors, setErrors] = useState([])
@@ -103,12 +126,9 @@ export function useJobSearch({ jobPredicate } = {}) {
   // as soon as it is ready, so results appear instantly and read as English a moment later.
   useEffect(() => {
     if (jobs.length === 0) return
-    let cancelled = false
     translateForeignJobs(jobs, (t) => {
-      if (cancelled) return
       setJobs((prev) => prev.map((j) => (j.id === t.id ? t : j)))
     })
-    return () => { cancelled = true }
   }, [jobs])
 
   useEffect(() => {
