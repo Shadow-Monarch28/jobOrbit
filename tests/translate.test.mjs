@@ -8,7 +8,7 @@ assert.equal(looksNonEnglish(en), false)
 assert.equal(looksNonEnglish(de), true)
 assert.equal(looksNonEnglish(fr), true)
 assert.equal(looksNonEnglish(ja), true)
-globalThis.fetch = async (_u, o) => ({ ok: true, json: async () => [[['EN:' + decodeURIComponent(o.body.slice(2)).slice(0, 12), 'x']]] })
+globalThis.fetch = async (_u, o) => ({ ok: true, json: async () => ({ translations: JSON.parse(o.body).texts.map((t) => (t ? 'EN:' + t.slice(0, 12) : t)) }) })
 const out = []
 await translateForeignJobs([en, de, ja], (j) => out.push(j))
 assert.equal(out.length, 2)

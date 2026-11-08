@@ -1,16 +1,16 @@
 // Translates non-English job listings to English so every result in
-// Discovery is readable. Uses Google's public translate endpoint (no key,
-// CORS-enabled). Entirely best-effort: on any failure the original text is
-// kept, so search never breaks because of translation.
+// Discovery is readable. Calls our own /api/translate serverless function
+// (the browser can't call Google directly: CORS + rate limits). Entirely
+// best-effort: on any failure the original text is kept.
 
-const ENDPOINT = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t'
+const ENDPOINT = '/api/translate'
+const CHUNK = 6
 const EN_WORDS = new Set((
   'the and for with you your our are will have has from that this who job work team experience ' +
   'skills role we to of in on a an as be or is at by it their all about able including ' +
   'responsibilities requirements looking join company develop manage support business'
 ).split(' '))
 
-const cache = new Map()
 const attempted = new Set()
 
 function nonLatinShare(text) {
@@ -31,60 +31,37 @@ export function looksNonEnglish(job) {
   return hits === 0 && accents > 0
 }
 
-function parse(data) {
-  const out = (data?.[0] ?? []).map((seg) => seg?.[0] ?? '').join('').trim()
-  if (!out) throw new Error('empty translation')
-  return out
+async function translateChunk(jobs) {
+  const texts = jobs.flatMap((j) => [j.title ?? '', (j.description ?? '').slice(0, 1200)])
+  const res = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts }),
+  })
+  if (!res.ok) throw new Error(`translate ${res.status}`)
+  const { translations } = await res.json()
+  return jobs.map((job, i) => {
+    const title = translations?.[i * 2] || job.title
+    const description = translations?.[i * 2 + 1] || job.description
+    if (title === job.title && description === job.description) return null
+    return { ...job, title, description, originalTitle: job.title, translated: true }
+  })
 }
 
-async function translateText(text) {
-  if (!text) return text
-  if (cache.has(text)) return cache.get(text)
-  let out
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `q=${encodeURIComponent(text)}`,
-    })
-    if (!res.ok) throw new Error(`translate ${res.status}`)
-    out = parse(await res.json())
-  } catch {
-    // Fallback: GET works from any origin, but URLs are length-limited.
-    const res = await fetch(`${ENDPOINT}&q=${encodeURIComponent(text.slice(0, 900))}`)
-    if (!res.ok) throw new Error(`translate ${res.status}`)
-    out = parse(await res.json())
-  }
-  cache.set(text, out)
-  return out
-}
-
-async function translateJob(job) {
-  const [title, description] = await Promise.all([
-    translateText(job.title).catch(() => job.title),
-    translateText((job.description ?? '').slice(0, 1500)).catch(() => job.description),
-  ])
-  if (title === job.title && description === job.description) throw new Error('not translated')
-  return { ...job, title, description, originalTitle: job.title, translated: true }
-}
-
-// Translates up to `limit` not-yet-translated foreign jobs, a few at a time,
-// calling onUpdate(translatedJob) as each one finishes.
-export async function translateForeignJobs(jobs, onUpdate, { limit = 60, concurrency = 4 } = {}) {
+// Translates up to `limit` not-yet-translated foreign jobs in small batches,
+// calling onUpdate(translatedJob) as each finishes. Stops at the first
+// request failure so a broken endpoint is never hammered.
+export async function translateForeignJobs(jobs, onUpdate, { limit = 60 } = {}) {
   const queue = jobs
     .filter((j) => !j.translated && !attempted.has(j.id) && looksNonEnglish(j))
     .slice(0, limit)
   queue.forEach((j) => attempted.add(j.id))
-  let i = 0
-  const worker = async () => {
-    while (i < queue.length) {
-      const job = queue[i++]
-      try {
-        onUpdate(await translateJob(job))
-      } catch {
-        // keep the original listing
-      }
+  for (let i = 0; i < queue.length; i += CHUNK) {
+    try {
+      const done = await translateChunk(queue.slice(i, i + CHUNK))
+      done.forEach((j) => j && onUpdate(j))
+    } catch {
+      return
     }
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker))
 }
