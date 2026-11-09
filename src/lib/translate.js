@@ -1,9 +1,7 @@
 // Translates non-English job listings to English so every result in
-// Discovery is readable. Calls our own /api/translate serverless function
-// (the browser can't call Google directly: CORS + rate limits). Entirely
+// Discovery is readable. Calls our `translate` Supabase edge function (Groq),
+// because Google's free endpoint rejects browser and Vercel traffic. Entirely
 // best-effort: on any failure the original text is kept.
-
-const ENDPOINT = '/api/translate'
 const CHUNK = 6
 const EN_WORDS = new Set((
   'the and for with you your our are will have has from that this who job work team experience ' +
@@ -31,9 +29,9 @@ export function looksNonEnglish(job) {
   return hits === 0 && accents > 0
 }
 
-async function translateChunk(jobs) {
+async function translateChunk(jobs, endpoint) {
   const texts = jobs.flatMap((j) => [j.title ?? '', (j.description ?? '').slice(0, 1200)])
-  const res = await fetch(ENDPOINT, {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ texts }),
@@ -51,14 +49,15 @@ async function translateChunk(jobs) {
 // Translates up to `limit` not-yet-translated foreign jobs in small batches,
 // calling onUpdate(translatedJob) as each finishes. Stops at the first
 // request failure so a broken endpoint is never hammered.
-export async function translateForeignJobs(jobs, onUpdate, { limit = 60 } = {}) {
+export async function translateForeignJobs(jobs, onUpdate, { limit = 60, endpoint } = {}) {
+  const url = endpoint ?? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate`
   const queue = jobs
     .filter((j) => !j.translated && !attempted.has(j.id) && looksNonEnglish(j))
     .slice(0, limit)
   queue.forEach((j) => attempted.add(j.id))
   for (let i = 0; i < queue.length; i += CHUNK) {
     try {
-      const done = await translateChunk(queue.slice(i, i + CHUNK))
+      const done = await translateChunk(queue.slice(i, i + CHUNK), url)
       done.forEach((j) => j && onUpdate(j))
     } catch {
       return

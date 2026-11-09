@@ -296,10 +296,10 @@ export default function Search() {
         </div>
       </div>
 
-      {errors.length > 0 && (
+      {isAdmin && errors.length > 0 && (
         <div className="rounded-lg border px-4 py-3 mb-4 text-sm" style={{ borderColor: 'var(--color-warning)', color: 'var(--color-warning)' }}>
           {errors.map((e, i) => (
-            <div key={i}>{SOURCE_LABEL[e.source] ?? e.source}: {e.message} Showing results from the other sources.</div>
+            <div key={i}>{SOURCE_LABEL[e.source] ?? e.source}: {e.message} Retrying automatically; showing results from the other sources meanwhile.</div>
           ))}
           <button onClick={runSearch} className="mt-2 px-3 py-1 rounded-lg border text-xs" style={{ borderColor: 'var(--color-warning)' }}>Try again</button>
         </div>
@@ -316,7 +316,7 @@ export default function Search() {
       {!loading && hasSearched && jobs.length === 0 && !matchResumeOnly && (
         <div className="text-center py-16 text-[var(--color-text-muted)]">
           {errors.some((e) => e.source === 'adzuna')
-            ? 'Local job listings come from Adzuna, which is not responding right now, so nothing could be shown. Your filters are fine. Press "Try again" above in a minute.'
+            ? 'Local job listings are taking a moment to load, so nothing could be shown yet. Your filters are fine; we are retrying automatically.'
             : 'No jobs matched your filters. Try loosening the salary range, job type, or date-posted filter, or enable more sources.'}
         </div>
       )}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseLocation, cityVariants } from '../lib/data/locations'
 import { searchAllJobs } from '../lib/jobSources'
 import { translateForeignJobs } from '../lib/translate'
@@ -103,22 +103,53 @@ export function useJobSearch({ jobPredicate } = {}) {
   // Link-only sources (Foundit etc.) never fetch, so toggling them must not re-run the search.
   const apiSourcesKey = activeSources.filter((k) => API_SOURCE_KEYS.includes(k)).sort().join(',')
 
+  // Auto-repair: a source that fails is quietly re-tried (after 4s, then 12s) on its own.
+  // When it comes back, its jobs are merged in and its warning disappears.
+  const searchToken = useRef(0)
+  const REPAIR_DELAYS = [4000, 12000]
+
+  const repairFailed = useCallback(async (token, failed, titles, where) => {
+    let remaining = failed
+    for (const delay of REPAIR_DELAYS) {
+      await new Promise((r) => setTimeout(r, delay))
+      if (token !== searchToken.current) return
+      const { jobs: more, errors: still } = await searchAllJobs({ titles, where, page: 1, sources: remaining })
+      if (token !== searchToken.current) return
+      const stillFailing = new Set(still.map((e) => e.source))
+      const fixed = remaining.filter((k) => !stillFailing.has(k))
+      if (more.length > 0) {
+        setJobs((prev) => {
+          const seen = new Set(prev.map((j) => j.id))
+          return [...prev, ...more.filter((j) => !seen.has(j.id))]
+        })
+      }
+      if (fixed.length > 0) setErrors((prev) => prev.filter((e) => !fixed.includes(e.source)))
+      remaining = remaining.filter((k) => stillFailing.has(k))
+      if (remaining.length === 0) return
+    }
+  }, [])
+
   const runSearch = useCallback(async () => {
+    const token = ++searchToken.current
     setLoading(true)
     setHasSearched(true)
     setAdzunaPage(1)
     setVisibleCount(PAGE_SIZE)
 
+    const titles = titleChips.length > 0 ? titleChips : ['']
+    const where = locationChips[0] ?? ''
     const { jobs: results, errors: searchErrors } = await searchAllJobs({
-      titles: titleChips.length > 0 ? titleChips : [''],
-      where: locationChips[0] ?? '',
+      titles,
+      where,
       page: 1,
       sources: activeSources.filter((k) => API_SOURCE_KEYS.includes(k)),
     })
+    if (token !== searchToken.current) return
 
     setJobs(results)
     setErrors(searchErrors)
     setLoading(false)
+    if (searchErrors.length > 0) repairFailed(token, searchErrors.map((e) => e.source), titles, where)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleChips, locationChips, apiSourcesKey])
 

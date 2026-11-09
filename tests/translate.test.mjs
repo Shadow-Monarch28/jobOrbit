@@ -10,7 +10,7 @@ assert.equal(looksNonEnglish(fr), true)
 assert.equal(looksNonEnglish(ja), true)
 globalThis.fetch = async (_u, o) => ({ ok: true, json: async () => ({ translations: JSON.parse(o.body).texts.map((t) => (t ? 'EN:' + t.slice(0, 12) : t)) }) })
 const out = []
-await translateForeignJobs([en, de, ja], (j) => out.push(j))
+await translateForeignJobs([en, de, ja], (j) => out.push(j), { endpoint: 'http://test/translate' })
 assert.equal(out.length, 2)
 assert.ok(out.every((j) => j.translated && j.title.startsWith('EN:') && j.originalTitle))
 console.log('translate ok')

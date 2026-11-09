@@ -350,7 +350,9 @@ async function handleTheMuse({ q }: { q: string }) {
   )
   const results = pages.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap((r) => r.value)
   if (results.length === 0 && pages.every((r) => r.status === 'rejected')) {
-    return jsonResponse({ error: 'The Muse answered with an error.', code: 'upstream' }, 502)
+    const why = String((pages[0] as PromiseRejectedResult).reason?.message ?? 'no detail')
+    console.error('The Muse upstream:', why)
+    return jsonResponse({ error: `The Muse answered with an error (${why}).`, code: 'upstream' }, 502)
   }
 
   const jobs = results
