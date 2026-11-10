@@ -21,7 +21,6 @@ async function fetchProxied(source, q, label, extra = {}) {
 }
 
 export const searchRemotive = ({ q = '' } = {}) => fetchProxied('remotive', q, 'Remotive')
-export const searchTheMuse = ({ q = '' } = {}) => fetchProxied('themuse', q, 'The Muse')
 export const searchJobicy = ({ q = '' } = {}) => fetchProxied('jobicy', q, 'Jobicy')
 export const searchGreenhouse = ({ q = '' } = {}) => fetchProxied('greenhouse', q, 'Greenhouse')
 export const searchJooble = ({ q = '', where = '' } = {}) => fetchProxied('jooble', q, 'Jooble', { where })

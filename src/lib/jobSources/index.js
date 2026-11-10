@@ -1,7 +1,7 @@
 import { searchAdzuna } from './adzuna'
 import { searchLever } from './lever'
 import { searchRemoteOk } from './remoteok'
-import { searchRemotive, searchTheMuse, searchJobicy, searchGreenhouse, searchJooble } from './proxied'
+import { searchRemotive, searchJobicy, searchGreenhouse, searchJooble } from './proxied'
 import { API_SOURCE_KEYS } from './sourceMeta'
 
 function dedupe(jobs) {
@@ -61,7 +61,7 @@ export async function searchAllJobs({
     taskSources.push('remoteok')
   }
 
-  // Greenhouse, Remotive and The Muse are searched once per title term; Jobicy
+  // Greenhouse and Remotive are searched once per title term; Jobicy
   // is fetched in full (its tag search is too narrow for job titles).
   if (sources.includes('greenhouse')) {
     titleTerms.forEach((t) => {
@@ -78,12 +78,6 @@ export async function searchAllJobs({
   if (sources.includes('jobicy')) {
     tasks.push(searchJobicy({ q: '' }))
     taskSources.push('jobicy')
-  }
-  if (sources.includes('themuse')) {
-    titleTerms.forEach((t) => {
-      tasks.push(searchTheMuse({ q: t }))
-      taskSources.push('themuse')
-    })
   }
 
   const settled = await Promise.allSettled(tasks)

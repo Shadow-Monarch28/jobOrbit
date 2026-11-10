@@ -88,7 +88,6 @@ Deno.serve(async (req: Request) => {
 
     if (source === 'lever') return await guarded('Lever', ck, () => handleLever({ q, list: companies(DEFAULT_LEVER_COMPANIES) }))
     if (source === 'remotive') return await guarded('Remotive', ck, () => handleRemotive({ q }))
-    if (source === 'themuse') return await guarded('The Muse', ck, () => handleTheMuse({ q }))
     if (source === 'jooble') return await guarded('Jooble', `${ck}|${where.toLowerCase()}`, () => handleJooble({ q, where }))
     if (source === 'jobicy') return await guarded('Jobicy', ck, () => handleJobicy({ q }))
     if (source === 'greenhouse') return await guarded('Greenhouse', ck, () => handleGreenhouse({ q, list: companies(DEFAULT_GREENHOUSE_COMPANIES) }))
@@ -341,65 +340,6 @@ async function handleRemotive({ q }: { q: string }) {
   return jsonResponse({ jobs, count: jobs.length, page: 1 })
 }
 
-// The Muse has moved its public endpoint before (a plain /api/public/jobs now answers 404 for
-// us), so every known address is tried in turn, with the optional MUSE_API_KEY secret when set.
-const MUSE_ENDPOINTS = [
-  'https://www.themuse.com/api/public/jobs',
-  'https://www.themuse.com/api/public/v2/jobs',
-  'https://api.themuse.com/jobs',
-]
-async function museFetch(page: number): Promise<any[]> {
-  const key = Deno.env.get('MUSE_API_KEY')
-  const failures: string[] = []
-  for (const base of MUSE_ENDPOINTS) {
-    try {
-      const url = `${base}?page=${page}${key ? `&api_key=${encodeURIComponent(key)}` : ''}`
-      const res = await fetchRetry(url, { headers: { Accept: 'application/json', 'User-Agent': 'JobOrbit/1.0' } })
-      if (!res.ok) { failures.push(`${new URL(base).pathname} ${res.status}`); continue }
-      const body = await res.json()
-      if (Array.isArray(body?.results)) return body.results
-      failures.push(`${new URL(base).pathname} unexpected shape`)
-    } catch (err) {
-      failures.push(`${new URL(base).pathname} ${String(err).slice(0, 40)}`)
-    }
-  }
-  throw new Error(failures.join('; '))
-}
-
-async function handleTheMuse({ q }: { q: string }) {
-  const pages = await Promise.allSettled([1, 2, 3].map((page) => museFetch(page)))
-  const results = pages.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap((r) => r.value)
-  if (results.length === 0 && pages.every((r) => r.status === 'rejected')) {
-    const why = String((pages[0] as PromiseRejectedResult).reason?.message ?? 'no detail')
-    console.error('The Muse upstream:', why)
-    return jsonResponse({ error: `The Muse answered with an error (${why}).`, code: 'upstream' }, 502)
-  }
-
-  const jobs = results
-    .map((job: any) => {
-      const locationText = (job.locations ?? []).map((l: any) => l.name).filter(Boolean).join(' / ')
-      const { workplace, country } = normalizeWorkplace({ locationText })
-      return {
-        id: `themuse-${job.id}`,
-        source: 'themuse',
-        sourceId: String(job.id),
-        title: job.name,
-        company: job.company?.name ?? 'Unknown company',
-        location: locationText,
-        url: job.refs?.landing_page,
-        description: stripHtml(job.contents ?? ''),
-        tags: [...(job.categories ?? []).map((c: any) => c.name), ...(job.levels ?? []).map((l: any) => l.name)].filter(Boolean),
-        postedAt: job.publication_date ?? null,
-        workplace,
-        country,
-        salary: null,
-        salaryMin: null,
-        salaryMax: null,
-      }
-    })
-    .filter((j: any) => matchesQuery(q, j.title, j.description, j.tags.join(' ')))
-  return jsonResponse({ jobs, count: jobs.length, page: 1 })
-}
 
 async function handleJobicy({ q }: { q: string }) {
   const res = await fetchRetry(`https://jobicy.com/api/v2/remote-jobs?count=50${q ? `&tag=${encodeURIComponent(q)}` : ''}`)
