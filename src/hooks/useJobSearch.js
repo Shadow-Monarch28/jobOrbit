@@ -149,7 +149,7 @@ export function useJobSearch({ jobPredicate } = {}) {
     setJobs(results)
     setErrors(searchErrors)
     setLoading(false)
-    if (searchErrors.length > 0) repairFailed(token, searchErrors.map((e) => e.source), titles, where)
+    if (searchErrors.some((e) => e.source !== 'jooble')) repairFailed(token, searchErrors.map((e) => e.source).filter((k) => k !== 'jooble'), titles, where)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleChips, locationChips, apiSourcesKey])
 

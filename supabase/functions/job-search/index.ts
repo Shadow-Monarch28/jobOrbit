@@ -430,14 +430,17 @@ async function handleGreenhouse({ q, list }: { q: string; list: string[] }) {
 async function handleJooble({ q, where }: { q: string; where: string }) {
   const key = Deno.env.get('JOOBLE_API_KEY')
   if (!key) return jsonResponse({ error: 'Jooble is not configured.', code: 'not_configured' }, 503)
+  // Jooble requires a location, and the free plan is only 500 calls per key in total, so a
+  // search with no place chosen never spends one.
+  if (!where.trim()) return jsonResponse({ jobs: [], count: 0, page: 1 })
   const res = await fetch(`https://jooble.org/api/${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ keywords: q.trim() || 'jobs', ...(where.trim() ? { location: where.trim() } : {}), page: 1 }),
+    body: JSON.stringify({ keywords: q.trim() || 'jobs', location: where.trim(), page: 1 }),
     signal: AbortSignal.timeout(12000),
   })
   if (res.status === 401 || res.status === 403) return jsonResponse({ error: 'Jooble rejected the key.', code: 'auth' }, 502)
-  if (res.status === 429) return jsonResponse({ error: 'Jooble rate limit.', code: 'rate_limit' }, 429)
+  if (res.status === 429) return jsonResponse({ error: 'Jooble limit reached (free keys allow 500 calls in total).', code: 'rate_limit' }, 429)
   if (!res.ok) return jsonResponse({ error: `Jooble answered ${res.status}: ${(await res.text()).slice(0, 160)}`, code: 'upstream' }, 502)
   const body = await res.json()
   if (!Array.isArray(body?.jobs)) return jsonResponse({ error: 'Jooble answered in an unexpected format.', code: 'upstream' }, 502)
@@ -473,7 +476,7 @@ async function sourceHealth() {
     ['greenhouse', () => handleGreenhouse({ q: '', list: DEFAULT_GREENHOUSE_COMPANIES })],
     ['remotive', () => handleRemotive({ q: '' })],
     ['jobicy', () => handleJobicy({ q: '' })],
-    ['jooble', () => handleJooble({ q: 'developer', where: 'India' })],
+    ['jooble', () => handleJooble({ q: 'developer', where: 'New York' })],
   ]
   const report = await Promise.all(
     probes.map(async ([source, run]) => {
