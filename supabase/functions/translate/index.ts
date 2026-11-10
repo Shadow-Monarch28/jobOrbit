@@ -41,7 +41,7 @@ async function callGroq(items: { i: number; t: string }[]) {
       ],
     }),
   })
-  if (!res.ok) throw new Error(`groq ${res.status}`)
+  if (!res.ok) throw new Error(`groq ${res.status}: ${(await res.text()).slice(0, 300)}`)
   const data = await res.json()
   const parsed = JSON.parse(data?.choices?.[0]?.message?.content ?? '{}')
   return Array.isArray(parsed.items) ? parsed.items : []
@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
       }
     } catch (err) {
       console.error('translate failed', String(err))
-      return json({ error: 'translate failed', code: 'upstream' }, 502)
+      return json({ error: `translate failed: ${String(err).slice(0, 300)}`, code: 'upstream' }, 502)
     }
   }
   return json({ translations: out })

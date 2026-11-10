@@ -48,7 +48,7 @@ export async function fetchJson(url, label) {
     const code = body?.code
     if (res.status === 429 && !code) throw Object.assign(new Error(FRIENDLY.rate_limit(label)), { final: true })
     if (FRIENDLY[code]) throw Object.assign(new Error(FRIENDLY[code](label)), { final: code !== 'unreachable' })
-    throw new Error(`${label} did not answer properly just now.`)
+    throw new Error(`${label} did not answer properly just now.${body?.error ? ` [${res.status}: ${body.error}]` : ` [${res.status}]`}`)
   } catch (err) {
     if (err.name === 'AbortError') throw new Error(`${label} did not answer in time.`)
     if (err instanceof TypeError) throw new Error(`Could not reach ${label}. Check your connection.`)
