@@ -433,12 +433,12 @@ async function handleJooble({ q, where }: { q: string; where: string }) {
   const res = await fetch(`https://jooble.org/api/${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ keywords: q, location: where, page: '1' }),
+    body: JSON.stringify({ keywords: q.trim() || 'jobs', ...(where.trim() ? { location: where.trim() } : {}), page: 1 }),
     signal: AbortSignal.timeout(12000),
   })
   if (res.status === 401 || res.status === 403) return jsonResponse({ error: 'Jooble rejected the key.', code: 'auth' }, 502)
   if (res.status === 429) return jsonResponse({ error: 'Jooble rate limit.', code: 'rate_limit' }, 429)
-  if (!res.ok) return jsonResponse({ error: `Jooble answered ${res.status}.`, code: 'upstream' }, 502)
+  if (!res.ok) return jsonResponse({ error: `Jooble answered ${res.status}: ${(await res.text()).slice(0, 160)}`, code: 'upstream' }, 502)
   const body = await res.json()
   if (!Array.isArray(body?.jobs)) return jsonResponse({ error: 'Jooble answered in an unexpected format.', code: 'upstream' }, 502)
   const jobs = (body?.jobs ?? []).map((job: any) => {
