@@ -77,6 +77,8 @@ Deno.serve(async (req: Request) => {
     const page = Number(url.searchParams.get('page') ?? '1')
     const country = url.searchParams.get('country') ?? 'in'
 
+    if (source === 'health') return await sourceHealth()
+
     if (source === 'adzuna') {
       return await guarded('Adzuna', `adzuna|${country}|${q.toLowerCase()}|${where.toLowerCase()}|${page}`, () => handleAdzuna({ q, where, page, country }))
     }
@@ -261,11 +263,13 @@ async function handleAdzuna({
 }
 
 async function handleLever({ q, list }: { q: string; list: string[] }) {
+  const failed: string[] = []
   const results = await Promise.allSettled(
     list.map(async (company) => {
       const res = await fetchRetry(`https://api.lever.co/v0/postings/${company}?mode=json`)
-      if (!res.ok) return []
+      if (!res.ok) { failed.push(String(res.status)); return [] }
       const postings = await res.json()
+      if (!Array.isArray(postings)) { failed.push('shape'); return [] }
       return postings.map((job: any) => {
         const rawDescription = job.descriptionPlain || (job.description ? stripHtml(job.description) : '')
         const listsText = Array.isArray(job.lists)
@@ -300,6 +304,10 @@ async function handleLever({ q, list }: { q: string; list: string[] }) {
     })
   )
 
+  const rejected = results.filter((r) => r.status === 'rejected').length
+  if (list.length > 0 && failed.length + rejected === list.length) {
+    return jsonResponse({ error: `Lever answered with an error (${[...new Set(failed)].join(', ') || 'unreachable'}).`, code: 'upstream' }, 502)
+  }
   let jobs = results
     .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
     .flatMap((r) => r.value)
@@ -319,6 +327,7 @@ async function handleRemotive({ q }: { q: string }) {
   const res = await fetchRetry(apiUrl)
   if (!res.ok) return jsonResponse({ error: `Remotive answered with an error (${res.status}).`, code: res.status === 429 ? 'rate_limit' : 'upstream' }, res.status === 429 ? 429 : 502)
   const data = await res.json()
+  if (!Array.isArray(data?.jobs)) return jsonResponse({ error: 'Remotive answered in an unexpected format.', code: 'upstream' }, 502)
 
   const jobs = (data.jobs ?? []).map((job: any) => ({
     id: `remotive-${job.id}`,
@@ -345,6 +354,7 @@ async function handleJobicy({ q }: { q: string }) {
   const res = await fetchRetry(`https://jobicy.com/api/v2/remote-jobs?count=50${q ? `&tag=${encodeURIComponent(q)}` : ''}`)
   if (!res.ok) return jsonResponse({ error: `Jobicy answered with an error (${res.status}).`, code: res.status === 429 ? 'rate_limit' : 'upstream' }, res.status === 429 ? 429 : 502)
   const data = await res.json()
+  if (!Array.isArray(data?.jobs)) return jsonResponse({ error: 'Jobicy answered in an unexpected format.', code: 'upstream' }, 502)
 
   const jobs = (data.jobs ?? []).map((job: any) => {
     const min = job.annualSalaryMin ?? job.salaryMin ?? null
@@ -371,11 +381,13 @@ async function handleJobicy({ q }: { q: string }) {
 }
 
 async function handleGreenhouse({ q, list }: { q: string; list: string[] }) {
+  const failed: string[] = []
   const results = await Promise.allSettled(
     list.map(async (company) => {
       const res = await fetchRetry(`https://boards-api.greenhouse.io/v1/boards/${company}/jobs?content=true`)
-      if (!res.ok) return []
+      if (!res.ok) { failed.push(String(res.status)); return [] }
       const data = await res.json()
+      if (!Array.isArray(data?.jobs)) { failed.push('shape'); return [] }
       return (data.jobs ?? []).map((job: any) => {
         const locationText = job.location?.name ?? ''
         const { workplace, country } = normalizeWorkplace({ locationText })
@@ -399,6 +411,10 @@ async function handleGreenhouse({ q, list }: { q: string; list: string[] }) {
       })
     })
   )
+  const rejected = results.filter((r) => r.status === 'rejected').length
+  if (list.length > 0 && failed.length + rejected === list.length) {
+    return jsonResponse({ error: `Greenhouse answered with an error (${[...new Set(failed)].join(', ') || 'unreachable'}).`, code: 'upstream' }, 502)
+  }
   const jobs = results
     .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
     .flatMap((r) => r.value)
@@ -424,6 +440,7 @@ async function handleJooble({ q, where }: { q: string; where: string }) {
   if (res.status === 429) return jsonResponse({ error: 'Jooble rate limit.', code: 'rate_limit' }, 429)
   if (!res.ok) return jsonResponse({ error: `Jooble answered ${res.status}.`, code: 'upstream' }, 502)
   const body = await res.json()
+  if (!Array.isArray(body?.jobs)) return jsonResponse({ error: 'Jooble answered in an unexpected format.', code: 'upstream' }, 502)
   const jobs = (body?.jobs ?? []).map((job: any) => {
     const { workplace, country } = normalizeWorkplace({ locationText: job.location ?? '' })
     return {
@@ -445,4 +462,29 @@ async function handleJooble({ q, where }: { q: string; where: string }) {
     }
   })
   return jsonResponse({ jobs, count: jobs.length, page: 1 })
+}
+
+// Admin "Check sources": calls every source handler once, directly (no cache), and reports what
+// each upstream actually did, so a removed or changed API shows up here before users hit it.
+async function sourceHealth() {
+  const probes: [string, () => Promise<Response>][] = [
+    ['adzuna', () => handleAdzuna({ q: 'developer', where: '', page: 1, country: 'in' })],
+    ['lever', () => handleLever({ q: '', list: DEFAULT_LEVER_COMPANIES })],
+    ['greenhouse', () => handleGreenhouse({ q: '', list: DEFAULT_GREENHOUSE_COMPANIES })],
+    ['remotive', () => handleRemotive({ q: '' })],
+    ['jobicy', () => handleJobicy({ q: '' })],
+    ['jooble', () => handleJooble({ q: 'developer', where: 'India' })],
+  ]
+  const report = await Promise.all(
+    probes.map(async ([source, run]) => {
+      try {
+        const res = await run()
+        const body = await res.clone().json().catch(() => ({}))
+        return { source, ok: res.ok, status: res.status, count: body?.count ?? null, error: body?.error ?? null }
+      } catch (err) {
+        return { source, ok: false, status: 0, count: null, error: String(err).slice(0, 160) }
+      }
+    })
+  )
+  return jsonResponse({ checkedAt: new Date().toISOString(), report })
 }

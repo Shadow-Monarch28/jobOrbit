@@ -5,6 +5,8 @@ import JobCard from '../components/JobCard'
 import MultiSelectInput from '../components/MultiSelectInput'
 import HelpTip from '../components/HelpTip'
 import SourceDropdown from '../components/SourceDropdown'
+import { edgeFunctionUrl } from '../lib/jobSources/shared'
+import { searchRemoteOk } from '../lib/jobSources/remoteok'
 import { SOURCE_LABEL, buildSourceLink } from '../lib/jobSources/sourceMeta'
 import { JOB_TITLE_SUGGESTIONS } from '../lib/data/jobTitles'
 import { COUNTRY_OPTIONS, CITIES_BY_COUNTRY, parseLocation } from '../lib/data/locations'
@@ -53,6 +55,15 @@ const inputClass = 'flex-1 px-2.5 py-1.5 rounded-lg border bg-transparent text-s
 export default function Search() {
   const { user, isAdmin } = useAuth()
   const [applicationStatusMap, setApplicationStatusMap] = useState({})
+  const [health, setHealth] = useState(null)
+  const checkSources = async () => {
+    setHealth({ loading: true })
+    const [edge, remoteok] = await Promise.all([
+      fetch(`${edgeFunctionUrl('job-search')}?source=health`).then((r) => r.json()).catch((e) => ({ report: [{ source: 'edge function', ok: false, status: 0, error: String(e) }] })),
+      searchRemoteOk({ q: '' }).then((r) => ({ source: 'remoteok', ok: true, status: 200, count: r.jobs?.length ?? 0 })).catch((e) => ({ source: 'remoteok', ok: false, status: 0, error: e.message })),
+    ])
+    setHealth({ report: [...(edge.report ?? []), remoteok] })
+  }
   const [defaultResume, setDefaultResume] = useState(null)
   const [matchResumeOnly, setMatchResumeOnly] = useState(false)
 
@@ -295,6 +306,23 @@ export default function Search() {
           <SourceDropdown selected={activeSources} onChange={setActiveSources} title={titleChips[0] ?? ''} country={city || country} showLinks={isAdmin} />
         </div>
       </div>
+
+      {isAdmin && (
+        <div className="mb-4 text-xs">
+          <button onClick={checkSources} disabled={health?.loading} className="px-3 py-1 rounded-lg border disabled:opacity-60" style={{ borderColor: 'var(--color-border)' }}>
+            {health?.loading ? 'Checking sources…' : 'Check sources'}
+          </button>
+          {health?.report && (
+            <ul className="mt-2 space-y-0.5">
+              {health.report.map((r) => (
+                <li key={r.source} style={{ color: r.ok ? 'var(--color-text-muted)' : 'var(--color-danger)' }}>
+                  {r.ok ? '✓' : '✗'} {r.source}: {r.ok ? `${r.count ?? 0} jobs` : `${r.status || 'failed'} ${r.error ?? ''}`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {isAdmin && errors.length > 0 && (
         <div className="rounded-lg border px-4 py-3 mb-4 text-sm" style={{ borderColor: 'var(--color-warning)', color: 'var(--color-warning)' }}>
