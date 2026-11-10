@@ -5,7 +5,7 @@ import JobCard from '../components/JobCard'
 import MultiSelectInput from '../components/MultiSelectInput'
 import HelpTip from '../components/HelpTip'
 import SourceDropdown from '../components/SourceDropdown'
-import { SOURCE_LABEL } from '../lib/jobSources/sourceMeta'
+import { SOURCE_LABEL, buildSourceLink } from '../lib/jobSources/sourceMeta'
 import { JOB_TITLE_SUGGESTIONS } from '../lib/data/jobTitles'
 import { COUNTRY_OPTIONS, CITIES_BY_COUNTRY, parseLocation } from '../lib/data/locations'
 import { SKILL_SUGGESTIONS } from '../lib/data/skills'
@@ -318,6 +318,20 @@ export default function Search() {
           {errors.some((e) => e.source === 'adzuna')
             ? 'Local job listings are taking a moment to load, so nothing could be shown yet. Your filters are fine; we are retrying automatically.'
             : 'No jobs matched your filters. Try loosening the salary range, job type, or date-posted filter, or enable more sources.'}
+          {(city || country) && (
+            <div className="mt-3 text-sm">
+              Nothing listed here yet for {city || country}? Search it directly on{' '}
+              {['linkedin', 'indeed'].map((k, i) => (
+                <span key={k}>
+                  {i > 0 && ' or '}
+                  <a href={buildSourceLink(k, { title: titleChips[0] ?? '', country: city ? `${city}, ${country}` : country })} target="_blank" rel="noreferrer" className="underline">
+                    {SOURCE_LABEL[k]}
+                  </a>
+                </span>
+              ))}
+              .
+            </div>
+          )}
         </div>
       )}
 

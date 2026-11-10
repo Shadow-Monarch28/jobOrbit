@@ -1,7 +1,7 @@
 import { searchAdzuna } from './adzuna'
 import { searchLever } from './lever'
 import { searchRemoteOk } from './remoteok'
-import { searchRemotive, searchTheMuse, searchJobicy, searchGreenhouse } from './proxied'
+import { searchRemotive, searchTheMuse, searchJobicy, searchGreenhouse, searchJooble } from './proxied'
 import { API_SOURCE_KEYS } from './sourceMeta'
 
 function dedupe(jobs) {
@@ -42,6 +42,12 @@ export async function searchAllJobs({
     titleTerms.forEach((t) => {
       tasks.push(searchAdzuna({ q: t, where, page }))
       taskSources.push('adzuna')
+    })
+  }
+  if (sources.includes('jooble')) {
+    titleTerms.forEach((t) => {
+      tasks.push(searchJooble({ q: t, where }))
+      taskSources.push('jooble')
     })
   }
   if (sources.includes('lever')) {

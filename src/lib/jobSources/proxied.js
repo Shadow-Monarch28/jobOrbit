@@ -4,8 +4,8 @@
 import { resilient, fetchJson } from './resilient'
 import { edgeFunctionUrl, deriveJobType, deriveExperienceLevel, deriveIndustryFromTags } from './shared'
 
-async function fetchProxied(source, q, label) {
-  const params = new URLSearchParams({ source, q })
+async function fetchProxied(source, q, label, extra = {}) {
+  const params = new URLSearchParams({ source, q, ...extra })
   const url = `${edgeFunctionUrl('job-search')}?${params.toString()}`
   const data = await resilient({ key: `${source}:${params.toString()}`, label, load: () => fetchJson(url, label) })
 
@@ -24,3 +24,4 @@ export const searchRemotive = ({ q = '' } = {}) => fetchProxied('remotive', q, '
 export const searchTheMuse = ({ q = '' } = {}) => fetchProxied('themuse', q, 'The Muse')
 export const searchJobicy = ({ q = '' } = {}) => fetchProxied('jobicy', q, 'Jobicy')
 export const searchGreenhouse = ({ q = '' } = {}) => fetchProxied('greenhouse', q, 'Greenhouse')
+export const searchJooble = ({ q = '', where = '' } = {}) => fetchProxied('jooble', q, 'Jooble', { where })

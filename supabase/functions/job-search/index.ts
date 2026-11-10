@@ -89,6 +89,7 @@ Deno.serve(async (req: Request) => {
     if (source === 'lever') return await guarded('Lever', ck, () => handleLever({ q, list: companies(DEFAULT_LEVER_COMPANIES) }))
     if (source === 'remotive') return await guarded('Remotive', ck, () => handleRemotive({ q }))
     if (source === 'themuse') return await guarded('The Muse', ck, () => handleTheMuse({ q }))
+    if (source === 'jooble') return await guarded('Jooble', `${ck}|${where.toLowerCase()}`, () => handleJooble({ q, where }))
     if (source === 'jobicy') return await guarded('Jobicy', ck, () => handleJobicy({ q }))
     if (source === 'greenhouse') return await guarded('Greenhouse', ck, () => handleGreenhouse({ q, list: companies(DEFAULT_GREENHOUSE_COMPANIES) }))
 
@@ -340,14 +341,33 @@ async function handleRemotive({ q }: { q: string }) {
   return jsonResponse({ jobs, count: jobs.length, page: 1 })
 }
 
+// The Muse has moved its public endpoint before (a plain /api/public/jobs now answers 404 for
+// us), so every known address is tried in turn, with the optional MUSE_API_KEY secret when set.
+const MUSE_ENDPOINTS = [
+  'https://www.themuse.com/api/public/jobs',
+  'https://www.themuse.com/api/public/v2/jobs',
+  'https://api.themuse.com/jobs',
+]
+async function museFetch(page: number): Promise<any[]> {
+  const key = Deno.env.get('MUSE_API_KEY')
+  const failures: string[] = []
+  for (const base of MUSE_ENDPOINTS) {
+    try {
+      const url = `${base}?page=${page}${key ? `&api_key=${encodeURIComponent(key)}` : ''}`
+      const res = await fetchRetry(url, { headers: { Accept: 'application/json', 'User-Agent': 'JobOrbit/1.0' } })
+      if (!res.ok) { failures.push(`${new URL(base).pathname} ${res.status}`); continue }
+      const body = await res.json()
+      if (Array.isArray(body?.results)) return body.results
+      failures.push(`${new URL(base).pathname} unexpected shape`)
+    } catch (err) {
+      failures.push(`${new URL(base).pathname} ${String(err).slice(0, 40)}`)
+    }
+  }
+  throw new Error(failures.join('; '))
+}
+
 async function handleTheMuse({ q }: { q: string }) {
-  const pages = await Promise.allSettled(
-    [1, 2, 3].map(async (page) => {
-      const res = await fetchRetry(`https://www.themuse.com/api/public/jobs?page=${page}`)
-      if (!res.ok) throw new Error(`The Muse request failed (${res.status})`)
-      return (await res.json()).results ?? []
-    })
-  )
+  const pages = await Promise.allSettled([1, 2, 3].map((page) => museFetch(page)))
   const results = pages.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap((r) => r.value)
   if (results.length === 0 && pages.every((r) => r.status === 'rejected')) {
     const why = String((pages[0] as PromiseRejectedResult).reason?.message ?? 'no detail')
@@ -448,3 +468,41 @@ async function handleGreenhouse({ q, list }: { q: string; list: string[] }) {
   return jsonResponse({ jobs, count: jobs.length, page: 1 })
 }
 
+
+// Jooble aggregates listings for about 70 countries and takes any country or city name as the
+// location, so it is the broad "every country" source. Needs the free JOOBLE_API_KEY secret.
+async function handleJooble({ q, where }: { q: string; where: string }) {
+  const key = Deno.env.get('JOOBLE_API_KEY')
+  if (!key) return jsonResponse({ error: 'Jooble is not configured.', code: 'not_configured' }, 503)
+  const res = await fetch(`https://jooble.org/api/${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keywords: q, location: where, page: '1' }),
+    signal: AbortSignal.timeout(12000),
+  })
+  if (res.status === 401 || res.status === 403) return jsonResponse({ error: 'Jooble rejected the key.', code: 'auth' }, 502)
+  if (res.status === 429) return jsonResponse({ error: 'Jooble rate limit.', code: 'rate_limit' }, 429)
+  if (!res.ok) return jsonResponse({ error: `Jooble answered ${res.status}.`, code: 'upstream' }, 502)
+  const body = await res.json()
+  const jobs = (body?.jobs ?? []).map((job: any) => {
+    const { workplace, country } = normalizeWorkplace({ locationText: job.location ?? '' })
+    return {
+      id: `jooble-${job.id ?? job.link}`,
+      source: 'jooble',
+      sourceId: String(job.id ?? job.link),
+      title: stripHtml(job.title ?? ''),
+      company: job.company || 'Unknown company',
+      location: job.location ?? '',
+      url: job.link,
+      description: stripHtml(job.snippet ?? ''),
+      tags: job.type ? [job.type] : [],
+      postedAt: job.updated ?? null,
+      workplace,
+      country: where || country,
+      salary: job.salary || null,
+      salaryMin: null,
+      salaryMax: null,
+    }
+  })
+  return jsonResponse({ jobs, count: jobs.length, page: 1 })
+}
