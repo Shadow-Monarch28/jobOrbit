@@ -1,7 +1,6 @@
 import { searchAdzuna } from './adzuna'
 import { searchLever } from './lever'
 import { searchRemoteOk } from './remoteok'
-import { searchArbeitnow } from './arbeitnow'
 import { searchRemotive, searchTheMuse, searchJobicy, searchGreenhouse } from './proxied'
 import { API_SOURCE_KEYS } from './sourceMeta'
 
@@ -21,7 +20,7 @@ function dedupe(jobs) {
  *   call per title term (when multiple are given) and merge/de-dupe results —
  *   this is what actually lets a multi-title search surface jobs matching
  *   any of the chosen titles, not just the first one.
- * - RemoteOK and Arbeitnow have no reliable server-side OR search, so we
+ * - RemoteOK has no reliable server-side OR search, so we
  *   always fetch their full board and let the caller's own filtering do the
  *   real narrowing. This also means location filtering for every source
  *   should happen centrally after merging (never trust a source's own
@@ -54,10 +53,6 @@ export async function searchAllJobs({
   if (sources.includes('remoteok')) {
     tasks.push(searchRemoteOk({ q: '' }))
     taskSources.push('remoteok')
-  }
-  if (sources.includes('arbeitnow')) {
-    tasks.push(searchArbeitnow({ q: '' }))
-    taskSources.push('arbeitnow')
   }
 
   // Greenhouse, Remotive and The Muse are searched once per title term; Jobicy

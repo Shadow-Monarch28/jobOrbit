@@ -1,8 +1,12 @@
-import { CITY_SUGGESTIONS } from './cities'
+import { CITY_SUGGESTIONS as ALL_CITY_SUGGESTIONS } from './cities'
+
+// German-speaking countries are not offered: their listings are not in English.
+const NON_ENGLISH = new Set(['Germany', 'Austria', 'Switzerland', 'Liechtenstein'])
+const CITY_SUGGESTIONS = ALL_CITY_SUGGESTIONS.filter((l) => !NON_ENGLISH.has(l.slice(l.lastIndexOf(', ') + 2)))
 
 // Every country, with the most-searched ones first. Free-text entry still
 // works for cities or regions.
-const POPULAR = ['India', 'United States', 'United Kingdom', 'Canada', 'Germany', 'Singapore', 'Australia', 'United Arab Emirates']
+const POPULAR = ['India', 'United States', 'United Kingdom', 'Canada', 'Singapore', 'Australia', 'United Arab Emirates']
 
 const ALL_COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda',
@@ -37,7 +41,7 @@ const ALL_COUNTRIES = [
   'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
   'Uganda', 'Ukraine', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City',
   'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
-]
+].filter((c) => !NON_ENGLISH.has(c))
 
 export const LOCATION_SUGGESTIONS = [...POPULAR, ...ALL_COUNTRIES, ...CITY_SUGGESTIONS]
 

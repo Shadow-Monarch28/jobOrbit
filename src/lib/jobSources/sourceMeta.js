@@ -13,7 +13,6 @@ export const SOURCES = [
   { key: 'remotive', label: 'Remotive', kind: 'api' },
   { key: 'jobicy', label: 'Jobicy', kind: 'api' },
   { key: 'themuse', label: 'The Muse', kind: 'api' },
-  { key: 'arbeitnow', label: 'Arbeitnow', kind: 'api' },
   { key: 'foundit', label: 'Foundit', kind: 'link' },
   { key: 'cutshort', label: 'Cutshort', kind: 'link' },
   { key: 'wellfound', label: 'Wellfound', kind: 'link' },

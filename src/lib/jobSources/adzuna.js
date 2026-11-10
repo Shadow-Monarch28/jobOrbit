@@ -5,8 +5,8 @@ import { resilient, fetchJson } from './resilient'
 // Adzuna is split by country site. When the chosen place is one of its
 // countries we query that site directly instead of text-matching the name.
 const ADZUNA_COUNTRIES = {
-  'united kingdom': 'gb', 'united states': 'us', austria: 'at', australia: 'au', belgium: 'be',
-  brazil: 'br', canada: 'ca', switzerland: 'ch', germany: 'de', spain: 'es', france: 'fr',
+  'united kingdom': 'gb', 'united states': 'us', australia: 'au', belgium: 'be',
+  brazil: 'br', canada: 'ca', spain: 'es', france: 'fr',
   india: 'in', italy: 'it', mexico: 'mx', netherlands: 'nl', 'new zealand': 'nz', poland: 'pl',
   singapore: 'sg', 'south africa': 'za',
 }
