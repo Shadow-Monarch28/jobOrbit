@@ -24,10 +24,10 @@ Live listings pulled from seven sources, filterable by country, city, job type, 
 
 ![Discovery filters and results](docs/screenshots/02-discovery.png)
 
-### Match score
-Upload your resume and every job shows how well you fit, with the skills you have and the ones you are missing.
+### Career insights
+[Add one line describing what Career insights shows.]
 
-![Job detail with match score and missing skills](docs/screenshots/03-job-detail.png)
+![Career insights](docs/screenshots/03-career-insights.png)
 
 ### Resume builder and ATS evaluator
 Fix the gaps, tailor the resume to a specific job, and generate a cover letter. The ATS evaluator checks how your resume reads to automated filters.
