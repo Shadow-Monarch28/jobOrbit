@@ -25,7 +25,7 @@ Live listings pulled from seven sources, filterable by country, city, job type, 
 ![Discovery filters and results](docs/screenshots/02-discovery.png)
 
 ### Career insights
-[Add one line describing what Career insights shows.]
+A dashboard of your job hunt: applications tracked and their status breakdown, mock interviews completed, resume reviews completed, and skill progress. Each skill shows how many times you practiced it and your best rating out of 5, and skills rated 4/5 or higher count as interview-ready.
 
 ![Career insights](docs/screenshots/03-career-insights.png)
 
