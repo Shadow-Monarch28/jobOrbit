@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext'
 import { statusLabel, STATUS_COLOR } from '../lib/applicationStatus'
 import { getRecommendation } from '../lib/orbitRecommendation'
 import MockInterviewChat from '../components/MockInterviewChat'
+import MockInterviewSetup from '../components/MockInterviewSetup'
+import { isResumeDoc } from '../lib/builderApi'
 import QuestionBankPanel from '../components/QuestionBankPanel'
 import ResumeReviewPanel from '../components/ResumeReviewPanel'
 import { listBriefs, saveBrief, deleteBriefs, MIN_DESCRIPTION } from '../lib/jobDescriptions'
@@ -37,6 +39,8 @@ export default function InterviewLab() {
   const [briefBusy, setBriefBusy] = useState(false)
   const [briefError, setBriefError] = useState('')
   const [confirmId, setConfirmId] = useState(null)
+  // resume chosen in the setup step: undefined = not chosen yet, null = none, string = resume id
+  const [mockResume, setMockResume] = useState(undefined)
 
   useEffect(() => {
     let active = true
@@ -49,7 +53,7 @@ export default function InterviewLab() {
           .select('*')
           .eq('user_id', user.id)
           .order('applied_at', { ascending: false }),
-        supabase.from('resumes').select('id, file_name').eq('user_id', user.id),
+        supabase.from('resumes').select('id, file_name, title, doc_type, is_default').eq('user_id', user.id),
         supabase
           .from('ai_sessions')
           .select('application_id, saved_job_id, messages')
@@ -126,6 +130,7 @@ export default function InterviewLab() {
   }
 
   function backToList() {
+    setMockResume(undefined)
     setSelected(null)
     setSelectedBrief(null)
     setActiveMode(null)
@@ -147,7 +152,11 @@ export default function InterviewLab() {
           className={selectedBrief.mode === 'mock_interview' ? 'rounded-xl border p-4 sm:p-5 mt-5 overflow-hidden' : 'jo-info mt-6'}
           style={selectedBrief.mode === 'mock_interview' ? { borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' } : undefined}
         >
-          {selectedBrief.mode === 'mock_interview' && <MockInterviewChat savedJobId={selectedBrief.row.id} />}
+          {selectedBrief.mode === 'mock_interview' && (
+            inProgress.has(selectedBrief.row.id) || mockResume !== undefined
+              ? <MockInterviewChat savedJobId={selectedBrief.row.id} resumeId={mockResume ?? undefined} />
+              : <MockInterviewSetup resumes={resumes.filter(isResumeDoc)} onStart={setMockResume} />
+          )}
           {selectedBrief.mode === 'question_bank' && <QuestionBankPanel job={job} />}
         </div>
       </div>
@@ -178,7 +187,9 @@ export default function InterviewLab() {
           }
         >
           {activeMode === 'mock_interview' && (
-            <MockInterviewChat applicationId={selected.id} />
+            inProgress.has(selected.id) || mockResume !== undefined
+              ? <MockInterviewChat applicationId={selected.id} resumeId={mockResume ?? undefined} />
+              : <MockInterviewSetup resumes={resumes.filter(isResumeDoc)} onStart={setMockResume} />
           )}
           {activeMode === 'question_bank' && <QuestionBankPanel job={job} />}
           {activeMode === 'skill_gaps' && (

@@ -267,7 +267,7 @@ ${resume.parsed_text}`
 }
 
 async function handleMockInterview(supabase, userId, body) {
-  const { sessionId, applicationId, savedJobId, userAnswer } = body
+  const { sessionId, applicationId, savedJobId, resumeId, userAnswer } = body
 
   if (!sessionId) {
     if (!applicationId && !savedJobId) return jsonResponse({ error: 'applicationId or savedJobId is required to start a session.' }, 400)
@@ -310,9 +310,16 @@ async function handleMockInterview(supabase, userId, body) {
     }
 
     const job = application.job_data || {}
+    // Optional: the resume the candidate chose, so questions can probe their real experience.
+    let chosenResumeId: string | null = null
+    let resumeText = ''
+    if (resumeId) {
+      const { data: resume } = await supabase.from('resumes').select('id, parsed_text').eq('id', resumeId).eq('user_id', userId).maybeSingle()
+      if (resume) { chosenResumeId = resume.id; resumeText = (resume.parsed_text || '').slice(0, 1500) }
+    }
     const prompt = `You are a friendly but realistic interviewer conducting a mock interview for the role of "${job.title || 'this role'}"${job.company ? ' at ' + job.company : ''}.
 Job context: ${job.description ? job.description.slice(0, 600) : '(no description available)'}
-
+${resumeText ? `Candidate resume (use it to make the question relevant to their real background; never quote it back verbatim):\n${resumeText}\n` : ''}
 Ask exactly ONE opening interview question (behavioral or role-relevant). Respond with ONLY the question text, no preamble, no numbering.`
 
     const question = (await callLLM(prompt)).trim()
@@ -323,6 +330,7 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
         user_id: userId,
         application_id: applicationId ?? null,
         saved_job_id: savedJobId ?? null,
+        ...(chosenResumeId ? { resume_id: chosenResumeId } : {}),
         mode: 'mock_interview',
         messages: [{ role: 'assistant', kind: 'question', text: question }],
         status: 'in_progress',
@@ -362,7 +370,11 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
     .eq('id', session.saved_job_id ?? session.application_id)
     .eq('user_id', userId)
     .single()
-  const job = application?.job_data || {}
+  let job = application?.job_data || {}
+  if (session.resume_id) {
+    const { data: resume } = await supabase.from('resumes').select('parsed_text').eq('id', session.resume_id).eq('user_id', userId).maybeSingle()
+    if (resume?.parsed_text) job = { ...job, resumeText: resume.parsed_text.slice(0, 1500) }
+  }
 
   // One call decides what the candidate's message is (an answer, a doubt, or
   // not an answer at all) and produces the matching reply.

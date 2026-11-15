@@ -93,8 +93,11 @@ export function buildTranscript(messages, { finalOnly = false, compact = false }
 
 export function buildTurnPrompt({ job, transcript, currentQuestion, forceAnswer, isLastQuestion }) {
   const role = `"${job?.title || 'this role'}"${job?.company ? ' at ' + job.company : ''}`
+  const resumeBlock = job?.resumeText
+    ? `\nCANDIDATE RESUME (use it to make follow-up questions relevant to their real background; never quote it back verbatim):\n${job.resumeText}\n`
+    : ''
   return `You are a friendly but realistic interviewer for the role of ${role}.
-
+${resumeBlock}
 TRANSCRIPT SO FAR (lines marked "side reply" were clarifications, not new questions):
 ${transcript}
 

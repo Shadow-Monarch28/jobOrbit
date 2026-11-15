@@ -41,7 +41,7 @@ function lastQuestionText(messages) {
   return null
 }
 
-export default function MockInterviewChat({ applicationId, savedJobId, onComplete }) {
+export default function MockInterviewChat({ applicationId, savedJobId, resumeId, onComplete }) {
   const [sessionId, setSessionId] = useState(null)
   const [question, setQuestion] = useState(null)
   // [{role: 'assistant'|'user'|'feedback', kind?: 'question'|'clarification'|'redirect', text}]
@@ -107,7 +107,7 @@ export default function MockInterviewChat({ applicationId, savedJobId, onComplet
           applyStored(existing)
           return
         }
-        const res = await startMockInterview({ applicationId, savedJobId })
+        const res = await startMockInterview({ applicationId, savedJobId, resumeId })
         if (!active) return
         setSessionId(res.sessionId)
         sessionIdRef.current = res.sessionId
