@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { extractResumeText } from '../lib/resumeParser'
 import { extractSkillsFromText } from '../lib/matchingEngine'
-import { listDocs, listJobs, deleteDocs, setDefaultDoc, loadModel, isCover, isBuilt, isResumeDoc, docTitle } from '../lib/builderApi'
+import { saveBrief } from '../lib/jobDescriptions'
+import { jobLabel, listDocs, listJobs, deleteDocs, setDefaultDoc, loadModel, isCover, isBuilt, isResumeDoc, docTitle } from '../lib/builderApi'
 import { renderBuilderPdf, renderCoverPdf, downloadPdfBytes, openPdfBytes } from '../lib/resumePdf'
 import { RESUME_TEMPLATES, COVER_TEMPLATES, TEMPLATE_CATEGORIES, filterTemplates, getResumeTemplate, getCoverTemplate } from '../lib/resumeTemplates'
 import { emptyResume, emptyCoverLetter } from '../lib/resumeModel'
@@ -381,6 +382,20 @@ function AtsTab({ docs }) {
   useEffect(() => { setModel(null); setError('') }, [resumeId, jobKey, mode, pTitle, pCompany, pDesc])
 
   const MIN_DESC = 40
+  const [saving, setSaving] = useState(false)
+  const [savedNote, setSavedNote] = useState('')
+  async function saveToLab() {
+    setSaving(true); setError(''); setSavedNote('')
+    try {
+      const row = await saveBrief({ userId: user.id, title: pTitle, company: pCompany, description: pDesc })
+      const fresh = await listJobs(user.id)
+      setJobs(fresh)
+      setPTitle(''); setPCompany(''); setPDesc('')
+      setMode('saved')
+      setJobKey(`pasted:${row.job_data.sourceId}`)
+      setSavedNote('Saved to Mission Briefs in Interview Lab. You can use it in the resume builder and mock interviews too.')
+    } catch (e) { setError(e.message || "Couldn't save that description.") } finally { setSaving(false) }
+  }
   const job = mode === 'paste'
     ? (pDesc.trim().length >= MIN_DESC ? { title: pTitle.trim() || 'Pasted job', company: pCompany.trim(), description: pDesc.trim(), source: 'pasted' } : null)
     : jobs.find((j) => j.key === jobKey)?.job
@@ -388,6 +403,7 @@ function AtsTab({ docs }) {
   async function evaluate() {
     setBusy(true)
     setError('')
+    setSavedNote('')
     try {
       const row = resumes.find((r) => r.id === resumeId)
       const loaded = await loadModel(row)
@@ -422,18 +438,20 @@ function AtsTab({ docs }) {
             <input id="ats-company" value={pCompany} onChange={(e) => setPCompany(e.target.value)} placeholder="e.g. Acme Corp" className={sel} style={bs} />
             <label className="text-xs text-[var(--color-text-muted)]" htmlFor="ats-desc">Job description</label>
             <textarea id="ats-desc" value={pDesc} onChange={(e) => setPDesc(e.target.value)} rows={8} placeholder="Paste the full job description here" className={`${sel} resize-y`} style={bs} />
+            <button type="button" onClick={saveToLab} disabled={saving || pDesc.trim().length < MIN_DESC} className="text-xs px-3 py-1.5 rounded-lg border disabled:opacity-50" style={bs}>{saving ? 'Saving…' : 'Save to Mission Briefs'}</button>
             {pDesc.trim().length > 0 && pDesc.trim().length < MIN_DESC && <p className="text-xs" style={{ color: 'var(--color-warning)' }}>Paste a bit more, at least {MIN_DESC} characters, so the keywords can be read.</p>}
           </>
         ) : jobs.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-warning)' }}>Save or apply to a job in <PillLink to="/search">Discover</PillLink> first, or paste a description.</p> : (
           <>
             <label className="text-xs text-[var(--color-text-muted)]">Saved job</label>
             <select value={jobKey} onChange={(e) => setJobKey(e.target.value)} className={sel} style={bs}>
-              {jobs.map((j) => <option key={j.key} value={j.key}>{j.job.title} · {j.job.company}</option>)}
+              {jobs.map((j) => <option key={j.key} value={j.key}>{jobLabel(j.job)}</option>)}
             </select>
           </>
         )}
         <button onClick={evaluate} disabled={busy || !resumeId || !job} className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50" style={{ backgroundColor: 'var(--color-accent)' }}>{busy ? 'Reading your resume...' : 'Evaluate'}</button>
         {error && <p className="text-sm" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+        {savedNote && <p className="text-xs" style={{ color: 'var(--color-success, #22c55e)' }}>{savedNote}</p>}
       </div>
 
       <div className="rounded-xl border p-4 min-h-[200px]" style={{ ...bs, backgroundColor: 'var(--color-surface)' }}>

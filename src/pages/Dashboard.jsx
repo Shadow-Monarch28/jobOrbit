@@ -129,7 +129,7 @@ export default function Dashboard() {
 
     const [resumesRes, savedJobsRes, applicationsRes] = await Promise.all([
       supabase.from('resumes').select('*').eq('user_id', user.id),
-      supabase.from('saved_jobs').select('*').eq('user_id', user.id),
+      supabase.from('saved_jobs').select('*').eq('user_id', user.id).neq('job_source', 'pasted'),
       supabase.from('applications').select('*').eq('user_id', user.id),
     ])
 

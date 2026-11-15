@@ -108,3 +108,6 @@ export async function loadModel(row) {
   const lines = await extractStructuredLines(file)
   return { model: linesToModel(lines), imported: true }
 }
+
+// Picker label: pasted descriptions have no company.
+export const jobLabel = (job) => (job.company ? `${job.title} · ${job.company}` : `${job.title} · pasted`)

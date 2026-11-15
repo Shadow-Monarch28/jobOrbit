@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import PlanetLoader from './PlanetLoader'
 import { useAuth } from '../context/AuthContext'
-import { listDocs, listJobs, isResumeDoc, docTitle } from '../lib/builderApi'
+import { jobLabel, listDocs, listJobs, isResumeDoc, docTitle } from '../lib/builderApi'
 import { RESUME_TEMPLATES, COVER_TEMPLATES } from '../lib/resumeTemplates'
 
 // A job the person pasted in. If they left the title empty, look for "Job Title: ..."
@@ -121,7 +121,7 @@ export default function NewDocModal({ kind = 'resume', initialTemplateId, initia
               <>
                 <label className="block text-sm mt-3 mb-1 text-[var(--color-text-muted)]">Job</label>
                 <select value={jobKey} onChange={(e) => setJobKey(e.target.value)} className={field} style={bs}>
-                  {jobs.map((j) => <option key={j.key} value={j.key}>{j.job.title} · {j.job.company}</option>)}
+                  {jobs.map((j) => <option key={j.key} value={j.key}>{jobLabel(j.job)}</option>)}
                 </select>
               </>
             )}

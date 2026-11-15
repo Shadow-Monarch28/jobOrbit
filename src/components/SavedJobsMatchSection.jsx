@@ -218,6 +218,7 @@ export default function SavedJobsMatchSection({ user, defaultResume }) {
       .from('saved_jobs')
       .select('*')
       .eq('user_id', user.id)
+      .neq('job_source', 'pasted')
       .order('saved_at', { ascending: false })
 
     if (!error) setSavedJobs(data ?? [])

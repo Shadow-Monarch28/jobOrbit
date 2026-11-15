@@ -16,7 +16,7 @@ import {
   tailorModelToJob, applyAiTailor, splitClassStream, joinClassStream, compactForAi, draftCoverLetter, normalizeModel,
 } from '../lib/resumeModel'
 import { evaluateAts } from '../lib/atsEvaluator'
-import { listDocs, listJobs, loadModel, saveDoc, setDefaultDoc, isResumeDoc, docTitle } from '../lib/builderApi'
+import { jobLabel, listDocs, listJobs, loadModel, saveDoc, setDefaultDoc, isResumeDoc, docTitle } from '../lib/builderApi'
 import { requestBuilderAi } from '../lib/aiCoach'
 import { MONTHS, parseMonthYear } from '../lib/resumeDates'
 import { editableLinks, newLink, linkLabel as linkLabelOf } from '../lib/resumeLinks'
@@ -648,7 +648,7 @@ export default function ResumeEditor() {
                 <label className="block text-xs text-[var(--color-text-muted)] mb-1">Check this resume against</label>
                 <select value={job ? jobs.find((j) => j.job.sourceId === job.sourceId && j.job.source === job.source)?.key || '' : ''} onChange={(e) => setJob(jobs.find((j) => j.key === e.target.value)?.job || null)} className={`${inputCls} mb-4`} style={bs}>
                   <option value="">{job && !jobs.some((j) => j.job.sourceId === job.sourceId) ? `${job.title} · ${job.company}` : 'Choose a saved job...'}</option>
-                  {jobs.map((j) => <option key={j.key} value={j.key}>{j.job.title} · {j.job.company}</option>)}
+                  {jobs.map((j) => <option key={j.key} value={j.key}>{jobLabel(j.job)}</option>)}
                 </select>
                 {job ? <AtsPanel model={model} job={job} onChange={setModel} /> : <p className="text-sm text-[var(--color-text-muted)]">Pick a saved job and JobOrbit scores this resume against it, then tells you what to fix.</p>}
               </div>
@@ -659,7 +659,7 @@ export default function ResumeEditor() {
                 {jobs.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-warning)' }}>Save or apply to a job in Discover first.</p> : (
                   <select defaultValue="" disabled={busy === 'draft'} onChange={(e) => e.target.value && redraft(e.target.value)} className={inputCls} style={bs}>
                     <option value="">{busy === 'draft' ? 'Drafting...' : 'Choose a saved job...'}</option>
-                    {jobs.map((j) => <option key={j.key} value={j.key}>{j.job.title} · {j.job.company}</option>)}
+                    {jobs.map((j) => <option key={j.key} value={j.key}>{jobLabel(j.job)}</option>)}
                   </select>
                 )}
               </div>

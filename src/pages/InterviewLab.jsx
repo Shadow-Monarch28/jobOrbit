@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import PlanetLoader from '../components/PlanetLoader'
 import PillLink from '../components/PillLink'
 import { supabase } from '../lib/supabase'
@@ -8,6 +9,7 @@ import { getRecommendation } from '../lib/orbitRecommendation'
 import MockInterviewChat from '../components/MockInterviewChat'
 import QuestionBankPanel from '../components/QuestionBankPanel'
 import ResumeReviewPanel from '../components/ResumeReviewPanel'
+import { listBriefs, saveBrief, deleteBriefs, MIN_DESCRIPTION } from '../lib/jobDescriptions'
 
 function timeAgo(iso) {
   if (!iso) return null
@@ -27,13 +29,21 @@ export default function InterviewLab() {
   const [selected, setSelected] = useState(null) // application object
   const [reloadKey, setReloadKey] = useState(0)
   const [activeMode, setActiveMode] = useState(null) // 'mock_interview' | 'question_bank' | 'skill_gaps'
+  // Mission Briefs: pasted job descriptions
+  const [briefs, setBriefs] = useState([])
+  const [selectedBrief, setSelectedBrief] = useState(null) // { row, mode }
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ title: '', company: '', description: '' })
+  const [briefBusy, setBriefBusy] = useState(false)
+  const [briefError, setBriefError] = useState('')
+  const [confirmId, setConfirmId] = useState(null)
 
   useEffect(() => {
     let active = true
     async function load() {
       if (!user) return
       setLoading(true)
-      const [{ data: apps, error: appsErr }, { data: res, error: resErr }, { data: live }] = await Promise.all([
+      const [{ data: apps, error: appsErr }, { data: res, error: resErr }, { data: live }, briefRows] = await Promise.all([
         supabase
           .from('applications')
           .select('*')
@@ -42,23 +52,25 @@ export default function InterviewLab() {
         supabase.from('resumes').select('id, file_name').eq('user_id', user.id),
         supabase
           .from('ai_sessions')
-          .select('application_id, messages')
+          .select('application_id, saved_job_id, messages')
           .eq('user_id', user.id)
           .eq('mode', 'mock_interview')
           .eq('status', 'in_progress'),
+        listBriefs(user.id).catch((e) => { console.error('InterviewLab briefs fetch failed:', e); return [] }),
       ])
       if (!active) return
       if (appsErr) console.error('InterviewLab applications fetch failed:', appsErr)
       if (resErr) console.error('InterviewLab resumes fetch failed:', resErr)
       setApplications(apps || [])
       setResumes(res || [])
+      setBriefs(briefRows)
       // "Continue" only when the person has actually answered something;
       // a session that was opened but never answered still reads "Start".
       setInProgress(
         new Set(
           (live || [])
             .filter((r) => (r.messages || []).some((m) => m.role === 'user'))
-            .map((r) => r.application_id)
+            .map((r) => r.application_id ?? r.saved_job_id)
         )
       )
       setLoading(false)
@@ -84,8 +96,38 @@ export default function InterviewLab() {
     setActiveMode(mode)
   }
 
+  async function addBrief(e) {
+    e.preventDefault()
+    setBriefBusy(true)
+    setBriefError('')
+    try {
+      const row = await saveBrief({ userId: user.id, ...form })
+      setBriefs((b) => [row, ...b])
+      setForm({ title: '', company: '', description: '' })
+      setShowForm(false)
+    } catch (err) {
+      setBriefError(err.message || "Couldn't save that description.")
+    } finally {
+      setBriefBusy(false)
+    }
+  }
+
+  async function removeBrief(id) {
+    setBriefBusy(true)
+    try {
+      await deleteBriefs(user.id, [id])
+      setBriefs((b) => b.filter((x) => x.id !== id))
+      setConfirmId(null)
+    } catch (err) {
+      setBriefError(err.message || "Couldn't remove it.")
+    } finally {
+      setBriefBusy(false)
+    }
+  }
+
   function backToList() {
     setSelected(null)
+    setSelectedBrief(null)
     setActiveMode(null)
     setReloadKey((k) => k + 1)
   }
@@ -93,6 +135,25 @@ export default function InterviewLab() {
   // Check `selected` before `loading` — once you're mid-interview/review,
   // a background refetch of the applications list (e.g. from the auth
   // token refresh above) must never blank out the active session.
+  if (selectedBrief) {
+    const job = selectedBrief.row.job_data || {}
+    return (
+      <div className="p-4 sm:p-8 max-w-2xl mx-auto">
+        <button onClick={backToList} className="text-sm mb-4" style={{ color: 'var(--color-accent)' }}>
+          ← Back to Interview Lab
+        </button>
+        <h1 className="text-xl font-semibold font-heading">{job.title}{job.company ? <span className="text-[var(--color-text-muted)]"> · {job.company}</span> : null}</h1>
+        <div
+          className={selectedBrief.mode === 'mock_interview' ? 'rounded-xl border p-4 sm:p-5 mt-5 overflow-hidden' : 'jo-info mt-6'}
+          style={selectedBrief.mode === 'mock_interview' ? { borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' } : undefined}
+        >
+          {selectedBrief.mode === 'mock_interview' && <MockInterviewChat savedJobId={selectedBrief.row.id} />}
+          {selectedBrief.mode === 'question_bank' && <QuestionBankPanel job={job} />}
+        </div>
+      </div>
+    )
+  }
+
   if (selected) {
     const job = selected.job_data || {}
     return (
@@ -143,6 +204,68 @@ export default function InterviewLab() {
       <p className="text-[var(--color-text-muted)] mt-2 leading-relaxed">
         Practice for the real thing with Orbit Mentor — your personal sidekick for interviews and career prep.
       </p>
+      <section className="mt-8" aria-labelledby="briefs-h">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 id="briefs-h" className="font-heading text-lg font-semibold">Mission Briefs</h2>
+            <p className="text-sm text-[var(--color-text-muted)] mt-1">Paste a job description once, then launch it into ATS Radar, Resume Forge and mock interviews.</p>
+          </div>
+          <button type="button" onClick={() => { setShowForm((v) => !v); setBriefError('') }} className="text-sm px-4 py-2 rounded-lg font-medium text-white" style={{ backgroundColor: 'var(--color-accent)' }}>
+            {showForm ? 'Close' : '+ New brief'}
+          </button>
+        </div>
+
+        {showForm && (
+          <form onSubmit={addBrief} className="mt-4 rounded-xl border p-4 flex flex-col gap-3" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Job title (e.g. Data Analyst)" aria-label="Job title" className="text-sm px-3 py-2 rounded-lg border bg-transparent" style={{ borderColor: 'var(--color-border)' }} />
+              <input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Company (optional)" aria-label="Company" className="text-sm px-3 py-2 rounded-lg border bg-transparent" style={{ borderColor: 'var(--color-border)' }} />
+            </div>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={7} placeholder="Paste the full job description here" aria-label="Job description" className="text-sm px-3 py-2 rounded-lg border bg-transparent resize-y" style={{ borderColor: 'var(--color-border)' }} />
+            {briefError && <p className="text-sm" style={{ color: 'var(--color-danger)' }}>{briefError}</p>}
+            <div className="flex items-center gap-3">
+              <button type="submit" disabled={briefBusy || form.description.trim().length < MIN_DESCRIPTION} className="text-sm px-4 py-2 rounded-lg font-medium text-white disabled:opacity-50" style={{ backgroundColor: 'var(--color-accent)' }}>{briefBusy ? 'Saving…' : 'Save brief'}</button>
+              <span className="text-xs text-[var(--color-text-muted)]">At least {MIN_DESCRIPTION} characters.</span>
+            </div>
+          </form>
+        )}
+
+        {!showForm && briefError && <p className="text-sm mt-3" style={{ color: 'var(--color-danger)' }}>{briefError}</p>}
+        {briefs.length === 0 && !showForm && (
+          <p className="text-sm text-[var(--color-text-muted)] mt-4">No briefs yet. Add a job description to start preparing for a role you haven't applied to.</p>
+        )}
+
+        <div className="flex flex-col gap-3 mt-4">
+          {briefs.map((row) => {
+            const job = row.job_data || {}
+            const key = `${job.source}:${job.sourceId}`
+            return (
+              <div key={row.id} className="rounded-xl border p-4 sm:p-5" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+                <h3 className="font-heading font-semibold">{job.title}</h3>
+                <p className="text-sm text-[var(--color-text-muted)]">{job.company || 'Pasted description'} · {timeAgo(row.saved_at)}</p>
+                <p className="text-sm text-[var(--color-text-muted)] mt-2 line-clamp-2">{job.description}</p>
+                <div className="flex gap-2 mt-3 flex-wrap items-center">
+                  <button onClick={() => setSelectedBrief({ row, mode: 'mock_interview' })} className="text-sm px-4 py-2 rounded-lg font-medium text-white" style={{ backgroundColor: 'var(--color-accent)' }}>
+                    {inProgress.has(row.id) ? 'Continue Interview' : 'Start Mock Interview'}
+                  </button>
+                  <button onClick={() => setSelectedBrief({ row, mode: 'question_bank' })} className="text-sm px-4 py-2 rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>Question Bank</button>
+                  <Link to={`/resume-builder?tab=ats&job=${encodeURIComponent(key)}`} className="text-sm px-4 py-2 rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>ATS Radar</Link>
+                  {confirmId === row.id ? (
+                    <span className="flex items-center gap-2 text-sm ml-auto">
+                      Remove this brief?
+                      <button onClick={() => removeBrief(row.id)} disabled={briefBusy} className="px-3 py-1.5 rounded-lg text-white disabled:opacity-60" style={{ backgroundColor: 'var(--color-danger)' }}>Remove</button>
+                      <button onClick={() => setConfirmId(null)} className="px-3 py-1.5 rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>Keep</button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setConfirmId(row.id)} className="text-sm px-3 py-2 rounded-lg ml-auto" style={{ color: 'var(--color-danger)' }}>Remove</button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
       <p className="font-medium mt-7">Your next big interview starts here.</p>
       <p className="text-sm text-[var(--color-text-muted)] mt-1.5">Pick an application to begin.</p>
 

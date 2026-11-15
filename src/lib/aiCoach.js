@@ -55,8 +55,8 @@ export function requestResumeReview({ applicationId, resumeId }) {
 
 // Mock interview — call with no sessionId to start, then pass the
 // returned sessionId + the user's typed answer to continue.
-export function startMockInterview({ applicationId }) {
-  return invokeAiCoach({ action: 'mock_interview', applicationId })
+export function startMockInterview({ applicationId, savedJobId }) {
+  return invokeAiCoach({ action: 'mock_interview', applicationId, savedJobId })
 }
 
 export function continueMockInterview({ sessionId, userAnswer }) {

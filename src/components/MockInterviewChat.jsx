@@ -41,7 +41,7 @@ function lastQuestionText(messages) {
   return null
 }
 
-export default function MockInterviewChat({ applicationId, onComplete }) {
+export default function MockInterviewChat({ applicationId, savedJobId, onComplete }) {
   const [sessionId, setSessionId] = useState(null)
   const [question, setQuestion] = useState(null)
   // [{role: 'assistant'|'user'|'feedback', kind?: 'question'|'clarification'|'redirect', text}]
@@ -94,7 +94,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
         const { data: existing } = await supabase
           .from('ai_sessions')
           .select('id, messages, status, result')
-          .eq('application_id', applicationId)
+          .eq(savedJobId ? 'saved_job_id' : 'application_id', savedJobId ?? applicationId)
           .eq('mode', 'mock_interview')
           .eq('status', 'in_progress')
           .order('created_at', { ascending: false })
@@ -107,7 +107,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
           applyStored(existing)
           return
         }
-        const res = await startMockInterview({ applicationId })
+        const res = await startMockInterview({ applicationId, savedJobId })
         if (!active) return
         setSessionId(res.sessionId)
         sessionIdRef.current = res.sessionId
@@ -129,7 +129,7 @@ export default function MockInterviewChat({ applicationId, onComplete }) {
     return () => {
       active = false
     }
-  }, [applicationId])
+  }, [applicationId, savedJobId])
 
   // Quiet background sync: reads the stored session straight from the
   // database (no AI call, so no usage), on a timer and on realtime pushes.
