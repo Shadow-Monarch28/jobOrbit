@@ -52,6 +52,10 @@ function FilterField({ label, children }) {
 const selectClass = 'flex-1 px-2.5 py-1.5 rounded-lg border bg-transparent text-sm min-w-0'
 const inputClass = 'flex-1 px-2.5 py-1.5 rounded-lg border bg-transparent text-sm min-w-0'
 
+// Salary can't be negative or fractional: block the minus/exponent/decimal keys and strip pasted junk.
+const digitsOnly = (v) => String(v).replace(/\D/g, '')
+const blockSalaryKeys = (e) => { if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) e.preventDefault() }
+
 export default function Search() {
   const { user, isAdmin } = useAuth()
   const [applicationStatusMap, setApplicationStatusMap] = useState({})
@@ -236,9 +240,9 @@ export default function Search() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <FilterField label="Salary range">
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
-              <input type="number" placeholder="Min" value={salaryMinInput} onChange={(e) => setSalaryMinInput(e.target.value)} className={`${inputClass} w-full`} style={borderStyle} />
+              <input type="number" min="0" step="1" inputMode="numeric" placeholder="Min" value={salaryMinInput} onKeyDown={blockSalaryKeys} onChange={(e) => setSalaryMinInput(digitsOnly(e.target.value))} className={`${inputClass} w-full`} style={borderStyle} />
               <span className="text-[var(--color-text-muted)]">–</span>
-              <input type="number" placeholder="Max" value={salaryMaxInput} onChange={(e) => setSalaryMaxInput(e.target.value)} className={`${inputClass} w-full`} style={borderStyle} />
+              <input type="number" min="0" step="1" inputMode="numeric" placeholder="Max" value={salaryMaxInput} onKeyDown={blockSalaryKeys} onChange={(e) => setSalaryMaxInput(digitsOnly(e.target.value))} className={`${inputClass} w-full`} style={borderStyle} />
             </div>
           </FilterField>
           <FilterField label="Date posted">
