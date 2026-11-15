@@ -362,6 +362,10 @@ function AtsTab({ docs }) {
   const [jobs, setJobs] = useState([])
   const [resumeId, setResumeId] = useState('')
   const [jobKey, setJobKey] = useState('')
+  const [mode, setMode] = useState('saved') // 'saved' job or a 'paste'd description
+  const [pTitle, setPTitle] = useState('')
+  const [pCompany, setPCompany] = useState('')
+  const [pDesc, setPDesc] = useState('')
   const [model, setModel] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -374,9 +378,12 @@ function AtsTab({ docs }) {
     }).catch(() => {})
   }, [user.id, params])
   useEffect(() => { if (!resumeId && resumes.length) setResumeId((resumes.find((r) => r.is_default) ?? resumes[0]).id) }, [resumes, resumeId])
-  useEffect(() => { setModel(null); setError('') }, [resumeId, jobKey])
+  useEffect(() => { setModel(null); setError('') }, [resumeId, jobKey, mode, pTitle, pCompany, pDesc])
 
-  const job = jobs.find((j) => j.key === jobKey)?.job
+  const MIN_DESC = 40
+  const job = mode === 'paste'
+    ? (pDesc.trim().length >= MIN_DESC ? { title: pTitle.trim() || 'Pasted job', company: pCompany.trim(), description: pDesc.trim(), source: 'pasted' } : null)
+    : jobs.find((j) => j.key === jobKey)?.job
 
   async function evaluate() {
     setBusy(true)
@@ -402,7 +409,22 @@ function AtsTab({ docs }) {
             </select>
           </>
         )}
-        {jobs.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-warning)' }}>Save or apply to a job in <PillLink to="/search">Discover</PillLink> first.</p> : (
+        <div role="tablist" aria-label="Job source" className="flex rounded-lg border p-0.5 text-xs" style={bs}>
+          {[['saved', 'Saved job'], ['paste', 'Paste description']].map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)} className="flex-1 px-2 py-1.5 rounded-md font-medium" style={mode === k ? { backgroundColor: 'var(--color-accent)', color: '#fff' } : { color: 'var(--color-text-muted)' }}>{label}</button>
+          ))}
+        </div>
+        {mode === 'paste' ? (
+          <>
+            <label className="text-xs text-[var(--color-text-muted)]" htmlFor="ats-title">Job title (optional)</label>
+            <input id="ats-title" value={pTitle} onChange={(e) => setPTitle(e.target.value)} placeholder="e.g. Data Analyst" className={sel} style={bs} />
+            <label className="text-xs text-[var(--color-text-muted)]" htmlFor="ats-company">Company (optional)</label>
+            <input id="ats-company" value={pCompany} onChange={(e) => setPCompany(e.target.value)} placeholder="e.g. Acme Corp" className={sel} style={bs} />
+            <label className="text-xs text-[var(--color-text-muted)]" htmlFor="ats-desc">Job description</label>
+            <textarea id="ats-desc" value={pDesc} onChange={(e) => setPDesc(e.target.value)} rows={8} placeholder="Paste the full job description here" className={`${sel} resize-y`} style={bs} />
+            {pDesc.trim().length > 0 && pDesc.trim().length < MIN_DESC && <p className="text-xs" style={{ color: 'var(--color-warning)' }}>Paste a bit more, at least {MIN_DESC} characters, so the keywords can be read.</p>}
+          </>
+        ) : jobs.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-warning)' }}>Save or apply to a job in <PillLink to="/search">Discover</PillLink> first, or paste a description.</p> : (
           <>
             <label className="text-xs text-[var(--color-text-muted)]">Saved job</label>
             <select value={jobKey} onChange={(e) => setJobKey(e.target.value)} className={sel} style={bs}>
@@ -468,7 +490,7 @@ export default function ResumeBuilder() {
         <ActionCard icon="🎯" title="Tailor to a Job" blurb="Reshape a resume for a saved job" onClick={() => setModal({ kind: 'resume', initialMode: 'tailor' })} />
       </div>
 
-      <div className="flex gap-1 border-b mb-5 overflow-x-auto" style={bs} role="tablist">
+      <div className="flex gap-1 border-b mb-5 overflow-x-auto overflow-y-hidden" style={bs} role="tablist">
         {TABS.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setParams(k === 'resumes' ? {} : { tab: k })} className="px-4 py-2.5 text-sm whitespace-nowrap -mb-px border-b-2" style={{ borderColor: tab === k ? 'var(--color-accent)' : 'transparent', color: tab === k ? 'var(--color-text)' : 'var(--color-text-muted)', fontWeight: tab === k ? 600 : 400 }}>{label}</button>
         ))}
