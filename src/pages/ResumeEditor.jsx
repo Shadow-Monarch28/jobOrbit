@@ -18,7 +18,7 @@ import {
 import { evaluateAts } from '../lib/atsEvaluator'
 import { listDocs, listJobs, loadModel, saveDoc, setDefaultDoc, isResumeDoc, docTitle } from '../lib/builderApi'
 import { requestBuilderAi } from '../lib/aiCoach'
-import { toMonthInput, fromMonthInput } from '../lib/resumeDates'
+import { MONTHS, parseMonthYear } from '../lib/resumeDates'
 import { editableLinks, newLink, linkLabel as linkLabelOf } from '../lib/resumeLinks'
 import { renderBuilderPdf, renderCoverPdf, downloadPdfBytes } from '../lib/resumePdf'
 
@@ -94,14 +94,44 @@ function EntryShell({ id, index, count, onMove, onRemove, children }) {
   )
 }
 
+// Month + year as two controls: pick the month, type the year. Typing a year never clears the
+// month (the native month picker did), and a year can be typed even when no month is known.
 function MonthInput({ label, value, onChange, disabled }) {
-  const mv = toMonthInput(value)
+  const parsed = parseMonthYear(value)
+  const [m, setM] = useState(parsed?.m ?? 0)
+  const [y, setY] = useState(parsed ? String(parsed.y) : '')
+
+  // follow outside changes (loading a resume, toggling "current") but not our own edits
+  useEffect(() => {
+    if (compose(m, y) === (value || '')) return
+    const p = parseMonthYear(value)
+    setM(p?.m ?? 0)
+    setY(p ? String(p.y) : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
+  function compose(mm, yy) {
+    if (!/^\d{4}$/.test(yy)) return ''
+    return mm ? `${MONTHS[mm - 1]} ${yy}` : yy
+  }
+  function update(mm, yy) {
+    setM(mm)
+    setY(yy)
+    if (!mm && !yy) onChange('')
+    else if (/^\d{4}$/.test(yy)) onChange(compose(mm, yy))
+  }
+  const dis = disabled ? 'cursor-not-allowed bg-[var(--color-border)]' : ''
   return (
-    <label className={`block ${disabled ? 'opacity-50' : ''}`}>
+    <div className={disabled ? 'opacity-50' : ''}>
       <span className="block text-xs text-[var(--color-text-muted)] mb-1">{label}</span>
-      {value && !mv && !disabled && <span className="block text-[11px] text-[var(--color-text-muted)] mb-1">Was: {value}</span>}
-      <input type="month" value={mv} disabled={disabled} onChange={(e) => onChange(fromMonthInput(e.target.value))} className={`${inputCls} ${disabled ? 'cursor-not-allowed bg-[var(--color-border)]' : ''}`} style={bs} />
-    </label>
+      <div className="flex gap-2">
+        <select aria-label={`${label} month`} value={m} disabled={disabled} onChange={(e) => update(+e.target.value, y)} className={`${inputCls} ${dis}`} style={bs}>
+          <option value={0}>Month</option>
+          {MONTHS.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
+        </select>
+        <input aria-label={`${label} year`} inputMode="numeric" maxLength={4} placeholder="Year" value={y} disabled={disabled} onChange={(e) => update(m, e.target.value.replace(/\D/g, '').slice(0, 4))} className={`${inputCls} ${dis}`} style={bs} />
+      </div>
+    </div>
   )
 }
 
