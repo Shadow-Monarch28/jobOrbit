@@ -57,16 +57,33 @@ function RowMenu({ row, onView, onDownload, onDefault, onCopy, onDelete }) {
   }, [])
   const item = 'w-full text-left px-3 py-2 text-sm hover:bg-[var(--color-surface-alt)]'
   const run = (fn) => () => { setOpen(false); fn() }
+  function onMenuKey(e) {
+    const items = Array.from(ref.current?.querySelectorAll('[role="menuitem"]') ?? [])
+    const i = items.indexOf(document.activeElement)
+    let next = null
+    if (e.key === 'ArrowDown') next = items[(i + 1) % items.length]
+    else if (e.key === 'ArrowUp') next = items[(i - 1 + items.length) % items.length]
+    else if (e.key === 'Home') next = items[0]
+    else if (e.key === 'End') next = items[items.length - 1]
+    else if (e.key === 'Escape') { setOpen(false); ref.current?.querySelector('button')?.focus() }
+    if (next) { e.preventDefault(); next.focus() }
+  }
+  function onBtnKey(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); setOpen(true)
+      setTimeout(() => { const it = ref.current?.querySelectorAll('[role="menuitem"]'); if (it?.length) (e.key === 'ArrowUp' ? it[it.length - 1] : it[0]).focus() }, 0)
+    }
+  }
   return (
     <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} className="text-sm px-2 py-1 rounded-lg hover:bg-[var(--color-surface-alt)]">More ▾</button>
+      <button type="button" onClick={() => setOpen((o) => !o)} onKeyDown={onBtnKey} aria-haspopup="menu" aria-expanded={open} className="text-sm px-2 py-1 rounded-lg hover:bg-[var(--color-surface-alt)]">More ▾</button>
       {open && (
-        <div role="menu" className="absolute right-0 mt-1 w-48 rounded-lg border shadow-lg z-20 overflow-hidden" style={{ ...bs, backgroundColor: 'var(--color-surface)' }}>
-          <button className={item} onClick={run(onView)}>View</button>
-          <button className={item} onClick={run(onDownload)}>Download</button>
-          {!isCover(row) && !row.is_default && <button className={item} onClick={run(onDefault)}>Set as default</button>}
-          {!isBuilt(row) && !isCover(row) && <button className={item} onClick={run(onCopy)}>Edit a copy in builder</button>}
-          <button className={item} style={{ color: 'var(--color-danger)' }} onClick={run(onDelete)}>Delete</button>
+        <div role="menu" onKeyDown={onMenuKey} className="absolute right-0 mt-1 w-48 rounded-lg border shadow-lg z-20 overflow-hidden" style={{ ...bs, backgroundColor: 'var(--color-surface)' }}>
+          <button role="menuitem" className={item} onClick={run(onView)}>View</button>
+          <button role="menuitem" className={item} onClick={run(onDownload)}>Download</button>
+          {!isCover(row) && !row.is_default && <button role="menuitem" className={item} onClick={run(onDefault)}>Set as default</button>}
+          {!isBuilt(row) && !isCover(row) && <button role="menuitem" className={item} onClick={run(onCopy)}>Edit a copy in builder</button>}
+          <button role="menuitem" className={item} style={{ color: 'var(--color-danger)' }} onClick={run(onDelete)}>Delete</button>
         </div>
       )}
     </div>

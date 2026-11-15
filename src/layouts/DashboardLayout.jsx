@@ -77,7 +77,30 @@ function NavDropdown({ label, links, pathname }) {
   const { search } = useLocation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
+  const menuRef = useRef(null)
   const isAnyActive = links.some((l) => pathname.startsWith(l.to))
+
+  // Arrow keys: Down/Up on the button opens the menu and enters it; inside, Up/Down/Home/End move, Esc closes.
+  function focusItem(which) {
+    setTimeout(() => {
+      const items = Array.from(menuRef.current?.querySelectorAll('a') ?? [])
+      ;(which === 'last' ? items[items.length - 1] : items[0])?.focus()
+    }, 0)
+  }
+  function onButtonKey(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); setOpen(true); focusItem(e.key === 'ArrowUp' ? 'last' : 'first') }
+  }
+  function onMenuKey(e) {
+    const items = Array.from(menuRef.current?.querySelectorAll('a') ?? [])
+    const i = items.indexOf(document.activeElement)
+    let next = null
+    if (e.key === 'ArrowDown') next = items[(i + 1) % items.length]
+    else if (e.key === 'ArrowUp') next = items[(i - 1 + items.length) % items.length]
+    else if (e.key === 'Home') next = items[0]
+    else if (e.key === 'End') next = items[items.length - 1]
+    else if (e.key === 'Escape') { setOpen(false); rootRef.current?.querySelector('button')?.focus() }
+    if (next) { e.preventDefault(); next.focus() }
+  }
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -96,6 +119,9 @@ function NavDropdown({ label, links, pathname }) {
     >
       <button
         type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onKeyDown={onButtonKey}
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           isAnyActive ? '' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
@@ -106,7 +132,7 @@ function NavDropdown({ label, links, pathname }) {
         <ChevronDown className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full pt-2 z-40">
+        <div className="absolute left-0 top-full pt-2 z-40" ref={menuRef} onKeyDown={onMenuKey}>
           <div
             className="min-w-[180px] rounded-xl border p-1.5 shadow-lg"
             style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}

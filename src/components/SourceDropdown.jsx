@@ -7,6 +7,8 @@ import { SOURCES, buildSourceLink } from '../lib/jobSources/sourceMeta'
 export default function SourceDropdown({ selected, onChange, title = '', country = '', showLinks = false }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const btnRef = useRef(null)
+  const listRef = useRef(null)
   const apiSources = SOURCES.filter((s) => s.kind === 'api')
   const linkSources = showLinks ? SOURCES.filter((s) => s.kind === 'link') : []
   const allKeys = apiSources.map((s) => s.key)
@@ -15,7 +17,7 @@ export default function SourceDropdown({ selected, onChange, title = '', country
   useEffect(() => {
     if (!open) return
     const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    const esc = (e) => { if (e.key === 'Escape') setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') { setOpen(false); btnRef.current?.focus() } }
     document.addEventListener('pointerdown', close)
     document.addEventListener('keydown', esc)
     return () => {
@@ -23,6 +25,29 @@ export default function SourceDropdown({ selected, onChange, title = '', country
       document.removeEventListener('keydown', esc)
     }
   }, [open])
+
+  // Arrow keys move through the options (checkboxes and links), Home/End jump, Tab leaves.
+  function options() {
+    return Array.from(listRef.current?.querySelectorAll('input[type="checkbox"], a[href]') ?? [])
+  }
+  function onListKey(e) {
+    const items = options()
+    if (!items.length) return
+    const i = items.indexOf(document.activeElement)
+    let next = null
+    if (e.key === 'ArrowDown') next = items[(i + 1) % items.length]
+    else if (e.key === 'ArrowUp') next = items[(i - 1 + items.length) % items.length]
+    else if (e.key === 'Home') next = items[0]
+    else if (e.key === 'End') next = items[items.length - 1]
+    if (next) { e.preventDefault(); next.focus() }
+  }
+  function onButtonKey(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      setOpen(true)
+      setTimeout(() => { const items = options(); (e.key === 'ArrowUp' ? items[items.length - 1] : items[0])?.focus() }, 0)
+    }
+  }
 
   function toggle(key) {
     if (allSelected) return onChange([key])
@@ -39,10 +64,12 @@ export default function SourceDropdown({ selected, onChange, title = '', country
   return (
     <div ref={ref} className="relative min-w-0 w-full sm:w-72">
       <button
+        ref={btnRef}
         type="button"
-        aria-haspopup="listbox"
+        aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={onButtonKey}
         className="jo-field w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border bg-transparent text-sm text-left"
         style={{ borderColor: 'var(--color-border)' }}
       >
@@ -52,8 +79,10 @@ export default function SourceDropdown({ selected, onChange, title = '', country
 
       {open && (
         <div
-          role="listbox"
-          aria-multiselectable="true"
+          ref={listRef}
+          role="group"
+          aria-label="Job sources"
+          onKeyDown={onListKey}
           className="jo-dropdown absolute z-20 mt-1 w-full rounded-lg border shadow-lg max-h-72 overflow-y-auto py-1"
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
         >

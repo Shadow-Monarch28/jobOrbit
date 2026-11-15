@@ -1,10 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
 const MAX_SUGGESTIONS = 400
 
 export default function MultiSelectInput({ values, onChange, suggestions = [], placeholder }) {
   const [inputText, setInputText] = useState('')
   const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(-1)
+  const listId = useId()
   const inputRef = useRef(null)
   const blurTimeout = useRef(null)
 
@@ -18,6 +20,11 @@ export default function MultiSelectInput({ values, onChange, suggestions = [], p
     return hits.slice(0, MAX_SUGGESTIONS)
   }, [suggestions, values, inputText])
 
+  useEffect(() => { setActive(-1) }, [inputText, values])
+  useEffect(() => {
+    if (active >= 0) document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: 'nearest' })
+  }, [active, listId])
+
   function addChip(value) {
     const trimmed = value.trim()
     if (!trimmed || values.includes(trimmed)) return
@@ -30,7 +37,16 @@ export default function MultiSelectInput({ values, onChange, suggestions = [], p
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Enter' || e.key === ',') {
+    const n = filteredSuggestions.length
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!n) return
+      e.preventDefault()
+      setOpen(true)
+      setActive((a) => (e.key === 'ArrowDown' ? (a + 1) % n : (a <= 0 ? n - 1 : a - 1)))
+    } else if (e.key === 'Enter' && open && active >= 0 && filteredSuggestions[active]) {
+      e.preventDefault()
+      addChip(filteredSuggestions[active])
+    } else if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
       addChip(inputText)
     } else if (e.key === 'Backspace' && inputText === '' && values.length > 0) {
@@ -76,6 +92,11 @@ export default function MultiSelectInput({ values, onChange, suggestions = [], p
         <input
           ref={inputRef}
           type="text"
+          role="combobox"
+          aria-expanded={open && filteredSuggestions.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onFocus={() => setOpen(true)}
@@ -88,18 +109,24 @@ export default function MultiSelectInput({ values, onChange, suggestions = [], p
 
       {open && filteredSuggestions.length > 0 && (
         <div
+          id={listId}
+          role="listbox"
           className="jo-dropdown absolute z-20 mt-1 w-full rounded-lg border shadow-lg max-h-56 overflow-y-auto"
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
         >
-          {filteredSuggestions.map((s) => (
+          {filteredSuggestions.map((s, i) => (
             <button
               type="button"
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+              tabIndex={-1}
               key={s}
               onMouseDown={(e) => {
                 e.preventDefault() // keep focus on input, fires before blur
                 addChip(s)
               }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--color-surface-alt)]"
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--color-surface-alt)] ${i === active ? 'bg-[var(--color-surface-alt)]' : ''}`}
             >
               {s}
             </button>
