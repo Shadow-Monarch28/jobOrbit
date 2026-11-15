@@ -7,7 +7,7 @@ import HelpTip from '../components/HelpTip'
 import SourceDropdown from '../components/SourceDropdown'
 import { edgeFunctionUrl } from '../lib/jobSources/shared'
 import { searchRemoteOk } from '../lib/jobSources/remoteok'
-import { SOURCE_LABEL, buildSourceLink } from '../lib/jobSources/sourceMeta'
+import { SOURCES, SOURCE_LABEL, buildSourceLink } from '../lib/jobSources/sourceMeta'
 import { JOB_TITLE_SUGGESTIONS } from '../lib/data/jobTitles'
 import { COUNTRY_OPTIONS, CITIES_BY_COUNTRY, parseLocation } from '../lib/data/locations'
 import { SKILL_SUGGESTIONS } from '../lib/data/skills'
@@ -55,6 +55,8 @@ const inputClass = 'flex-1 px-2.5 py-1.5 rounded-lg border bg-transparent text-s
 // Salary can't be negative or fractional: block the minus/exponent/decimal keys and strip pasted junk.
 const digitsOnly = (v) => String(v).replace(/\D/g, '')
 const blockSalaryKeys = (e) => { if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) e.preventDefault() }
+
+const allApiKeys = SOURCES.filter((s) => s.kind === 'api').map((s) => s.key)
 
 export default function Search() {
   const { user, isAdmin } = useAuth()
@@ -346,13 +348,32 @@ export default function Search() {
       )}
 
       {!loading && hasSearched && jobs.length === 0 && !matchResumeOnly && (
-        <div className="text-center py-16 text-[var(--color-text-muted)]">
-          {errors.some((e) => e.source === 'adzuna')
-            ? 'Local job listings are taking a moment to load, so nothing could be shown yet. Your filters are fine; we are retrying automatically.'
-            : 'No jobs matched your filters. Try loosening the salary range, job type, or date-posted filter, or enable more sources.'}
+        <div className="mx-auto max-w-xl my-10 rounded-2xl border px-6 py-10 text-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+          <div aria-hidden="true" className="mx-auto mb-4 h-12 w-12 rounded-full flex items-center justify-center text-xl" style={{ backgroundColor: 'var(--color-surface-alt)', color: 'var(--color-accent)' }}>✦</div>
+          {errors.some((e) => e.source === 'adzuna') ? (
+            <p className="text-sm text-[var(--color-text-muted)]">Local job listings are taking a moment to load, so nothing could be shown yet. Your filters are fine; we are retrying automatically.</p>
+          ) : (
+            <>
+              <h3 className="font-heading text-lg font-semibold text-[var(--color-text)]">No openings found in your selected sources</h3>
+              {activeSources.length < allApiKeys.length ? (
+                <>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    The sources you picked may not carry the roles you're looking for. Try other sources, or select all sources to search every one of them in a single go.
+                  </p>
+                  <button type="button" onClick={() => setActiveSources(allApiKeys)} className="mt-5 px-5 py-2 rounded-full text-sm font-medium text-white" style={{ backgroundColor: 'var(--color-accent)' }}>
+                    Search all sources
+                  </button>
+                </>
+              ) : (
+                <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  None of our sources have a match right now. Try loosening the salary range, job type or date posted, or broaden the title and location.
+                </p>
+              )}
+            </>
+          )}
           {(city || country) && (
             <div className="mt-3 text-sm">
-              Nothing listed here yet for {city || country}? Search it directly on{' '}
+              Nothing listed here yet for {city || country}? You can also search it directly on{' '}
               {['linkedin', 'indeed'].map((k, i) => (
                 <span key={k}>
                   {i > 0 && ' or '}
