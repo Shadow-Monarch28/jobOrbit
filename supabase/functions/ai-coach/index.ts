@@ -267,18 +267,22 @@ ${resume.parsed_text}`
 }
 
 async function handleMockInterview(supabase, userId, body) {
-  const { sessionId, applicationId, userAnswer } = body
+  const { sessionId, applicationId, savedJobId, userAnswer } = body
 
   if (!sessionId) {
-    if (!applicationId) return jsonResponse({ error: 'applicationId is required to start a session.' }, 400)
+    if (!applicationId && !savedJobId) return jsonResponse({ error: 'applicationId or savedJobId is required to start a session.' }, 400)
 
+    // The interview targets either a tracked application or a saved (e.g. pasted) job description.
+    const [targetTable, targetCol, targetId] = savedJobId
+      ? ['saved_jobs', 'saved_job_id', savedJobId]
+      : ['applications', 'application_id', applicationId]
     const { data: application, error: appErr } = await supabase
-      .from('applications')
+      .from(targetTable)
       .select('*')
-      .eq('id', applicationId)
+      .eq('id', targetId)
       .eq('user_id', userId)
       .single()
-    if (appErr || !application) return jsonResponse({ error: 'Application not found.' }, 404)
+    if (appErr || !application) return jsonResponse({ error: 'Job not found.' }, 404)
 
     // One interview in progress per application: a second device (or a
     // double-click) gets the existing session back instead of a new one.
@@ -286,7 +290,7 @@ async function handleMockInterview(supabase, userId, body) {
       .from('ai_sessions')
       .select('*')
       .eq('user_id', userId)
-      .eq('application_id', applicationId)
+      .eq(targetCol, targetId)
       .eq('mode', 'mock_interview')
       .eq('status', 'in_progress')
       .order('created_at', { ascending: false })
@@ -317,7 +321,8 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
       .from('ai_sessions')
       .insert({
         user_id: userId,
-        application_id: applicationId,
+        application_id: applicationId ?? null,
+        saved_job_id: savedJobId ?? null,
         mode: 'mock_interview',
         messages: [{ role: 'assistant', kind: 'question', text: question }],
         status: 'in_progress',
@@ -352,9 +357,9 @@ Ask exactly ONE opening interview question (behavioral or role-relevant). Respon
   const turnsSoFar = countQuestions(messages)
 
   const { data: application } = await supabase
-    .from('applications')
+    .from(session.saved_job_id ? 'saved_jobs' : 'applications')
     .select('job_data')
-    .eq('id', session.application_id)
+    .eq('id', session.saved_job_id ?? session.application_id)
     .eq('user_id', userId)
     .single()
   const job = application?.job_data || {}
